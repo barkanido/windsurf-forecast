@@ -19,26 +19,6 @@ use providers::stormglass::StormGlassProvider;
 // ============================================================================
 
 #[derive(Debug, Serialize)]
-struct TransformedHourlyData {
-    time: String,
-    #[serde(rename = "airTemperature")]
-    air_temperature: f64,
-    gust: f64,
-    #[serde(rename = "swellDirection")]
-    swell_direction: f64,
-    #[serde(rename = "swellHeight")]
-    swell_height: f64,
-    #[serde(rename = "swellPeriod")]
-    swell_period: f64,
-    #[serde(rename = "waterTemperature")]
-    water_temperature: f64,
-    #[serde(rename = "windDirection")]
-    wind_direction: f64,
-    #[serde(rename = "windSpeed")]
-    wind_speed: f64,
-}
-
-#[derive(Debug, Serialize)]
 struct TransformedMetaData {
     lat: f64,
     lng: f64,
@@ -52,7 +32,7 @@ struct TransformedMetaData {
 
 #[derive(Debug, Serialize)]
 struct TransformedWeatherResponse {
-    hours: Vec<TransformedHourlyData>,
+    hours: Vec<WeatherDataPoint>,
     meta: TransformedMetaData,
 }
 
@@ -67,24 +47,6 @@ fn create_provider(provider_name: &str, api_key: String) -> Result<Box<dyn Forec
 // ============================================================================
 // Transformation Functions
 // ============================================================================
-
-fn transform_weather_point(point: WeatherDataPoint) -> TransformedHourlyData {
-    // Convert to Asia/Jerusalem timezone
-    let local_time = Jerusalem.from_utc_datetime(&point.time.naive_utc());
-    let formatted_time = local_time.format("%Y-%m-%d %H:%M").to_string();
-
-    TransformedHourlyData {
-        time: formatted_time,
-        air_temperature: point.air_temperature.unwrap_or(0.0),
-        gust: point.gust.unwrap_or(0.0),
-        swell_direction: point.swell_direction.unwrap_or(0.0),
-        swell_height: point.swell_height.unwrap_or(0.0),
-        swell_period: point.swell_period.unwrap_or(0.0),
-        water_temperature: point.water_temperature.unwrap_or(0.0),
-        wind_direction: point.wind_direction.unwrap_or(0.0),
-        wind_speed: point.wind_speed.unwrap_or(0.0),
-    }
-}
 
 fn create_units_map() -> HashMap<String, String> {
     [
@@ -193,14 +155,10 @@ async fn run() -> Result<()> {
     // Fetch weather data using the provider
     let weather_points = provider.fetch_weather_data(start, end, lat, lng).await?;
 
-    // Transform data to output format
-    let transformed_hours: Vec<TransformedHourlyData> = weather_points
-        .into_iter()
-        .map(transform_weather_point)
-        .collect();
-
+    // Create response with weather data - no transformation needed
+    // WeatherDataPoint now serializes directly with proper formatting
     let transformed_data = TransformedWeatherResponse {
-        hours: transformed_hours,
+        hours: weather_points,
         meta: create_meta(lat, lng, start, end, provider.name()),
     };
 
