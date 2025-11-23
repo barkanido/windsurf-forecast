@@ -77,9 +77,9 @@ fn validate_days_range(args: &Args) -> Result<()> {
 pub fn validate_provider(provider_name: &str) -> Result<()> {
     match provider_name {
         "stormglass" => Ok(()),
-        // Future providers can be added here
+        "openweathermap" => Ok(()),
         _ => anyhow::bail!(
-            "Unknown provider '{}'. Available providers: stormglass",
+            "Unknown provider '{}'. Available providers: stormglass, openweathermap",
             provider_name
         ),
     }

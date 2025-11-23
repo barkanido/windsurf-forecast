@@ -12,7 +12,7 @@ mod providers;
 
 use args::{Args, validate_args};
 use forecast_provider::{ForecastProvider, WeatherDataPoint};
-use providers::stormglass::StormGlassProvider;
+use providers::{stormglass::StormGlassProvider, openweathermap::OpenWeatherMapProvider};
 
 // ============================================================================
 // Data Structures for Output
@@ -39,6 +39,7 @@ struct TransformedWeatherResponse {
 fn create_provider(provider_name: &str, api_key: String) -> Result<Box<dyn ForecastProvider>> {
     match provider_name {
         "stormglass" => Ok(Box::new(StormGlassProvider::new(api_key))),
+        "openweathermap" => Ok(Box::new(OpenWeatherMapProvider::new(api_key))),
         // Future providers can be added here
         _ => unreachable!("Provider validation should have caught this"),
     }
@@ -128,6 +129,8 @@ async fn run() -> Result<()> {
     // Get API key for the selected provider
     let api_key = match args.provider.as_str() {
         "stormglass" => StormGlassProvider::get_api_key()?,
+        "openweathermap" => OpenWeatherMapProvider::get_api_key()?,
+        // Future providers can be added here
         _ => unreachable!("Provider validation should have caught this"),
     };
 
