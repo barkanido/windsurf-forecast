@@ -28,7 +28,7 @@ This application uses a modular provider architecture, allowing easy integration
 cargo build --release
 ```
 
-The compiled binary will be available at `target/release/stromglass-windsurf-forecast` (or `.exe` on Windows).
+The compiled binary will be available at `target/release/windsurf-forecast` (or `.exe` on Windows).
 
 ## Development
 
@@ -123,7 +123,7 @@ cargo run --release -- [OPTIONS]
 Or run the compiled binary directly:
 
 ```bash
-./target/release/stromglass-windsurf-forecast [OPTIONS]
+./target/release/windsurf-forecast [OPTIONS]
 ```
 
 ### Command Line Options

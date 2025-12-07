@@ -8,28 +8,28 @@ use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "stromglass-windsurf-forecast",
+    name = "windsurf-forecast",
     about = "Fetch weather forecast data from Storm Glass API",
     long_about = None,
     after_help = "Examples:\n  \
     # Get 4-day forecast starting today (default)\n  \
-    stromglass-windsurf-forecast\n\n  \
+    windsurf-forecast\n\n  \
     # Get 3-day forecast starting today\n  \
-    stromglass-windsurf-forecast --days-ahead 3\n\n  \
+    windsurf-forecast --days-ahead 3\n\n  \
     # Get 2-day forecast starting 3 days from now\n  \
-    stromglass-windsurf-forecast --days-ahead 2 --first-day-offset 3\n\n  \
+    windsurf-forecast --days-ahead 2 --first-day-offset 3\n\n  \
     # Get 5-day forecast starting tomorrow\n  \
-    stromglass-windsurf-forecast --days-ahead 5 --first-day-offset 1\n\n  \
+    windsurf-forecast --days-ahead 5 --first-day-offset 1\n\n  \
     # Use a specific timezone\n  \
-    stromglass-windsurf-forecast --timezone America/New_York\n\n  \
+    windsurf-forecast --timezone America/New_York\n\n  \
     # Use system/local timezone\n  \
-    stromglass-windsurf-forecast --timezone LOCAL\n\n  \
+    windsurf-forecast --timezone LOCAL\n\n  \
     # Pick timezone interactively\n  \
-    stromglass-windsurf-forecast --pick-timezone\n\n  \
+    windsurf-forecast --pick-timezone\n\n  \
     # Specify custom coordinates\n  \
-    stromglass-windsurf-forecast --lat 40.7128 --lng -74.0060\n\n  \
+    windsurf-forecast --lat 40.7128 --lng -74.0060\n\n  \
     # Use custom config file\n  \
-    stromglass-windsurf-forecast --config /path/to/config.toml\n\n\
+    windsurf-forecast --config /path/to/config.toml\n\n\
     Note: days-ahead + first-day-offset must not exceed 7 to ensure reliable forecasts."
 )]
 pub struct Args {
