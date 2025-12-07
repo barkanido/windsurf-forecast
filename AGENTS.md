@@ -58,11 +58,28 @@ cargo run --release
 - See custom serializer [`serialize_time_jerusalem()`](src/forecast_provider.rs:7) in WeatherDataPoint
 - Format: "YYYY-MM-DD HH:MM" in Jerusalem time
 
-### Provider Registration (3 Required Locations)
-When adding a new provider, you MUST update these 3 functions in [`main.rs`](src/main.rs:1):
-1. [`create_provider()`](src/main.rs:39) - instantiate provider
-2. API key retrieval in [`run()`](src/main.rs:130) - get env var
-3. [`validate_provider()`](src/args.rs:77) - register provider name
+### Provider Registration (Centralized Registry)
+When adding a new provider, you ONLY need to add registration in the provider module itself:
+1. Implement [`ForecastProvider`](src/forecast_provider.rs:1) trait in your provider module
+2. Add `inventory::submit!()` call in provider module to register with [`provider_registry`](src/provider_registry.rs:1)
+3. Declare module in [`src/providers/mod.rs`](src/providers/mod.rs:1)
+
+The registry automatically handles provider discovery, instantiation, and validation. No updates needed to [`main.rs`](src/main.rs:1) or [`args.rs`](src/args.rs:1).
+
+Example registration (add to provider module):
+```rust
+inventory::submit! {
+    ProviderMetadata {
+        name: "providername",
+        description: "Provider Description",
+        api_key_var: "PROVIDER_API_KEY",
+        instantiate: || {
+            let api_key = ProviderName::get_api_key()?;
+            Ok(Box::new(ProviderName::new(api_key)))
+        },
+    }
+}
+```
 
 ### Hard-coded Location
 - Coordinates are hard-coded in [`main.rs`](src/main.rs:155): `lat = 32.486722, lng = 34.888722`

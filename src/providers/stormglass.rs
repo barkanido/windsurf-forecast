@@ -7,6 +7,7 @@ use std::env;
 use thiserror::Error;
 
 use crate::forecast_provider::{ForecastProvider, WeatherDataPoint};
+use crate::provider_registry::ProviderMetadata;
 
 // ============================================================================
 // Custom Error Types
@@ -181,5 +182,22 @@ impl ForecastProvider for StormGlassProvider {
         }
 
         Ok(weather_points)
+    }
+}
+
+// ============================================================================
+// Provider Registry
+// ============================================================================
+
+// Register provider with central registry
+inventory::submit! {
+    ProviderMetadata {
+        name: "stormglass",
+        description: "StormGlass Marine Weather API",
+        api_key_var: "STORMGLASS_API_KEY",
+        instantiate: || {
+            let api_key = StormGlassProvider::get_api_key()?;
+            Ok(Box::new(StormGlassProvider::new(api_key)))
+        },
     }
 }

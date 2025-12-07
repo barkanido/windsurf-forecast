@@ -1,4 +1,5 @@
 use crate::forecast_provider::{ForecastProvider, WeatherDataPoint};
+use crate::provider_registry::ProviderMetadata;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -120,5 +121,22 @@ impl ForecastProvider for OpenWeatherMapProvider {
         }
 
         Ok(weather_points)
+    }
+}
+
+// ============================================================================
+// Provider Registry
+// ============================================================================
+
+// Register provider with central registry
+inventory::submit! {
+    ProviderMetadata {
+        name: "openweathermap",
+        description: "OpenWeatherMap Global Weather Data",
+        api_key_var: "OPEN_WEATHER_MAP_API_KEY",
+        instantiate: || {
+            let api_key = OpenWeatherMapProvider::get_api_key()?;
+            Ok(Box::new(OpenWeatherMapProvider::new(api_key)))
+        },
     }
 }

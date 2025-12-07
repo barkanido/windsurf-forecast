@@ -38,7 +38,12 @@ pub struct Args {
     pub first_day_offset: i32,
 
     /// Weather forecast provider to use
-    #[arg(long, default_value = "stormglass", value_name = "PROVIDER")]
+    #[arg(
+        long,
+        default_value = "stormglass",
+        value_name = "PROVIDER",
+        help = get_provider_help()
+    )]
     pub provider: String,
 
     /// Timezone for displaying timestamps (e.g., "UTC", "America/New_York", "Asia/Jerusalem")
@@ -95,12 +100,21 @@ fn validate_days_range(args: &Args) -> Result<()> {
 }
 
 pub fn validate_provider(provider_name: &str) -> Result<()> {
-    match provider_name {
-        "stormglass" => Ok(()),
-        "openweathermap" => Ok(()),
-        _ => anyhow::bail!(
-            "Unknown provider '{}'. Available providers: stormglass, openweathermap",
-            provider_name
-        ),
+    crate::provider_registry::validate_provider_name(provider_name)
+}
+
+/// Generate dynamic help text for provider argument
+fn get_provider_help() -> String {
+    let providers: Vec<_> = crate::provider_registry::all_provider_descriptions()
+        .map(|(name, desc)| format!("{}: {}", name, desc))
+        .collect();
+    
+    if providers.is_empty() {
+        "Weather forecast provider to use".to_string()
+    } else {
+        format!(
+            "Weather forecast provider to use\nAvailable providers:\n  {}",
+            providers.join("\n  ")
+        )
     }
 }

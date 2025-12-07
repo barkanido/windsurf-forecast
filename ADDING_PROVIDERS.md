@@ -1,20 +1,23 @@
 # Adding New Weather Forecast Providers
 
-This guide explains how to add a new weather forecast provider to the application.
+This guide explains how to add a new weather forecast provider to the application using the centralized provider registry.
 
 ## Architecture Overview
 
-The application uses a trait-based architecture where each weather provider implements the `ForecastProvider` trait defined in `src/forecast_provider.rs`.
+The application uses a trait-based architecture with automatic provider discovery:
+- Each weather provider implements the [`ForecastProvider`](src/forecast_provider.rs:1) trait
+- Providers self-register using the `inventory` crate pattern
+- The [`provider_registry`](src/provider_registry.rs:1) automatically discovers and manages all providers
 
-## Steps to Add a New Provider
+## Quick Start: 3 Simple Steps
 
 ### 1. Create Provider Module
 
-Create a new file in `src/providers/` for your provider (e.g., `src/providers/openweather.rs`).
+Create a new file in `src/providers/` for your provider (e.g., `src/providers/weatherapi.rs`).
 
-### 2. Implement the Provider
+### 2. Implement the Provider Trait
 
-Your provider must implement the `ForecastProvider` trait:
+Implement the `ForecastProvider` trait for your provider:
 
 ```rust
 use anyhow::{Context, Result};
@@ -23,27 +26,32 @@ use chrono::{DateTime, Utc};
 use std::env;
 
 use crate::forecast_provider::{ForecastProvider, WeatherDataPoint};
+use crate::provider_registry::ProviderMetadata;
 
-pub struct OpenWeatherProvider {
+pub struct WeatherAPIProvider {
     api_key: String,
 }
 
-impl OpenWeatherProvider {
+impl WeatherAPIProvider {
     pub fn new(api_key: String) -> Self {
         Self { api_key }
+    }
+
+    pub fn get_api_key() -> Result<String> {
+        env::var("WEATHERAPI_API_KEY").context(
+            "WEATHERAPI_API_KEY not found. Please set it in your .env file."
+        )
     }
 }
 
 #[async_trait]
-impl ForecastProvider for OpenWeatherProvider {
+impl ForecastProvider for WeatherAPIProvider {
     fn name(&self) -> &str {
-        "openweather"
+        "weatherapi"
     }
 
     fn get_api_key() -> Result<String> {
-        env::var("OPENWEATHER_API_KEY").context(
-            "OPENWEATHER_API_KEY not found. Please set it in your .env file."
-        )
+        Self::get_api_key()
     }
 
     async fn fetch_weather_data(
@@ -55,70 +63,52 @@ impl ForecastProvider for OpenWeatherProvider {
     ) -> Result<Vec<WeatherDataPoint>> {
         // Implement API call and transformation logic here
         // Return Vec<WeatherDataPoint>
-        todo!("Implement OpenWeather API integration")
+        todo!("Implement WeatherAPI integration")
+    }
+}
+
+// Register provider with central registry
+inventory::submit! {
+    ProviderMetadata {
+        name: "weatherapi",
+        description: "WeatherAPI.com Global Weather Data",
+        api_key_var: "WEATHERAPI_API_KEY",
+        instantiate: || {
+            let api_key = WeatherAPIProvider::get_api_key()?;
+            Ok(Box::new(WeatherAPIProvider::new(api_key)))
+        },
     }
 }
 ```
 
-### 3. Register Provider in Module
+### 3. Declare Module
 
-Add your provider to `src/providers/mod.rs`:
+Add your provider to [`src/providers/mod.rs`](src/providers/mod.rs:1):
 
 ```rust
 pub mod stormglass;
-pub mod openweather;  // Add this line
+pub mod openweathermap;
+pub mod weatherapi;  // Add this line
 ```
 
-### 4. Update Main to Support New Provider
+**That's it!** Your provider is now automatically:
+- ✅ Discovered by the registry
+- ✅ Available via CLI: `cargo run -- --provider weatherapi`
+- ✅ Listed in `--help` output
+- ✅ Validated during argument parsing
 
-In `src/main.rs`, update the `validate_provider` function:
+## No Central Code Changes Required
 
-```rust
-fn validate_provider(provider_name: &str) -> Result<()> {
-    match provider_name {
-        "stormglass" => Ok(()),
-        "openweather" => Ok(()),  // Add this line
-        _ => anyhow::bail!(
-            "Unknown provider '{}'. Available providers: stormglass, openweather",
-            provider_name
-        ),
-    }
-}
-```
+Unlike the old approach, you **DO NOT** need to update:
+- ❌ `src/main.rs` - No provider imports or instantiation code
+- ❌ `src/args.rs` - No validation updates
+- ❌ Any central registration code
 
-Update the `create_provider` function:
-
-```rust
-fn create_provider(provider_name: &str, api_key: String) -> Result<Box<dyn ForecastProvider>> {
-    match provider_name {
-        "stormglass" => Ok(Box::new(StormGlassProvider::new(api_key))),
-        "openweather" => Ok(Box::new(OpenWeatherProvider::new(api_key))),  // Add this line
-        _ => unreachable!("Provider validation should have caught this"),
-    }
-}
-```
-
-Update the API key retrieval in `run()`:
-
-```rust
-let api_key = match args.provider.as_str() {
-    "stormglass" => StormGlassProvider::get_api_key()?,
-    "openweather" => OpenWeatherProvider::get_api_key()?,  // Add this line
-    _ => unreachable!("Provider validation should have caught this"),
-};
-```
-
-### 5. Add Imports
-
-Add the import for your provider at the top of `src/main.rs`:
-
-```rust
-use providers::openweather::OpenWeatherProvider;
-```
+The registry handles everything automatically.
 
 ## Common Data Structure
 
-All providers must transform their API-specific data into the common `WeatherDataPoint` structure:
+All providers must transform their API-specific data into the common [`WeatherDataPoint`](src/forecast_provider.rs:19) structure:
 
 ```rust
 pub struct WeatherDataPoint {
@@ -139,17 +129,116 @@ pub struct WeatherDataPoint {
 Test your provider with:
 
 ```bash
-cargo run -- --provider openweather --days-ahead 2
+# Development testing
+cargo check
+cargo build
+cargo clippy
+cargo run -- --provider weatherapi --days-ahead 2
+
+# Verify it appears in help
+cargo run -- --help
+
+# Test error handling
+cargo run -- --provider weatherapi  # Without API key
 ```
+
+## Provider Registry Details
+
+### ProviderMetadata Fields
+
+- **name**: Unique identifier used in CLI (e.g., "weatherapi")
+  - Must be lowercase alphanumeric with optional hyphens/underscores
+  - Must be unique across all providers
+  
+- **description**: Human-readable description shown in `--help` output
+  - Keep concise (< 100 chars recommended)
+  
+- **api_key_var**: Environment variable name for the API key
+  - Follow SCREAMING_SNAKE_CASE convention (e.g., "WEATHERAPI_API_KEY")
+  
+- **instantiate**: Factory function that creates provider instances
+  - Responsible for retrieving its own API key
+  - Returns `Result<Box<dyn ForecastProvider>>`
+  - Called on-demand when provider is selected
+
+### API Key Retrieval
+
+Providers can use either:
+- `std::env::var()` - Standard environment variable access
+- `dotenv::var()` - Direct access to .env file (used by OpenWeatherMap)
+
+Choose based on your needs. Both approaches are supported.
 
 ## Best Practices
 
 1. **Error Handling**: Use descriptive error messages specific to your provider
-2. **API Key Management**: Each provider should have its own environment variable
+2. **API Key Management**: Each provider should have its own unique environment variable
 3. **Unit Conversions**: Handle any necessary unit conversions in the provider
 4. **Documentation**: Add comments explaining provider-specific logic
 5. **Testing**: Test edge cases and error conditions
+6. **Naming Consistency**: Ensure `ProviderMetadata.name` matches the provider's `name()` method
 
-## Example: StormGlass Provider
+## Removing a Provider
 
-See `src/providers/stormglass.rs` for a complete reference implementation.
+To remove a provider:
+1. Delete the provider file (e.g., `src/providers/weatherapi.rs`)
+2. Remove the module declaration from `src/providers/mod.rs`
+
+The registry will automatically update - no other changes needed.
+
+## Renaming a Provider
+
+To rename a provider, simply change the `name` field in the `inventory::submit!()` block:
+
+```rust
+inventory::submit! {
+    ProviderMetadata {
+        name: "weatherapi-v2",  // Changed from "weatherapi"
+        // ... rest unchanged
+    }
+}
+```
+
+The new name automatically propagates to CLI validation, help text, and error messages.
+
+## Examples
+
+### Complete Example: StormGlass Provider
+See [`src/providers/stormglass.rs`](src/providers/stormglass.rs:1) for a complete reference implementation.
+
+### Complete Example: OpenWeatherMap Provider
+See [`src/providers/openweathermap.rs`](src/providers/openweathermap.rs:1) for an implementation using `dotenv::var()`.
+
+## Registry API Reference
+
+For advanced use cases, the registry provides:
+
+```rust
+// Query functions
+provider_registry::get_provider_metadata(name: &str) -> Option<&'static ProviderMetadata>
+provider_registry::all_provider_names() -> impl Iterator<Item = &'static str>
+provider_registry::all_provider_descriptions() -> impl Iterator<Item = (&'static str, &'static str)>
+
+// Instantiation
+provider_registry::create_provider(name: &str) -> Result<Box<dyn ForecastProvider>>
+
+// Validation
+provider_registry::validate_provider_name(name: &str) -> Result<()>
+provider_registry::check_duplicates()  // Called automatically at startup
+```
+
+## Troubleshooting
+
+### "Unknown provider" error
+- Verify the `name` field in `inventory::submit!()` matches the CLI argument
+- Check that the module is declared in `src/providers/mod.rs`
+- Run `cargo clean && cargo build` to ensure registry is rebuilt
+
+### "Duplicate provider name" panic
+- Ensure each provider has a unique `name` field
+- Check for accidentally duplicated `inventory::submit!()` blocks
+
+### Provider not appearing in help
+- Verify `cargo build` completed successfully
+- Check that the `inventory::submit!()` block is present
+- Ensure the module is public (`pub mod`) in `src/providers/mod.rs`

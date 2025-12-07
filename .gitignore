@@ -1,3 +1,30 @@
+# Rust
 /target
+debug/
+release/
+*.rs.bk
+*.rlib
+*.prof*
+
+# Environment and secrets
 .env
+.env.*
+!.env.example
+
+# Output files
 weather_data*.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Logs
+*.log

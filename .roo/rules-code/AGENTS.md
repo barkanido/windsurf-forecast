@@ -1,14 +1,29 @@
 # Project Coding Rules (Non-Obvious Only)
 
-## Provider Implementation Critical Pattern
+## Provider Registration (Centralized Registry Pattern)
 
-When adding a new weather provider, you MUST update 3 separate locations or the provider won't work:
+When adding a new weather provider, you ONLY need to add registration in the provider module itself:
 
-1. [`create_provider()`](../../src/main.rs:39) - Add match arm to instantiate provider
-2. [`run()`](../../src/main.rs:130) - Add match arm for API key retrieval  
-3. [`validate_provider()`](../../src/args.rs:77) - Add provider name to validation
+1. Implement [`ForecastProvider`](../../src/forecast_provider.rs:1) trait in your provider module
+2. Add `inventory::submit!()` call in provider module to register with [`provider_registry`](../../src/provider_registry.rs:1)
+3. Declare module in [`src/providers/mod.rs`](../../src/providers/mod.rs:1)
 
-Missing any of these causes silent failures or runtime panics.
+The registry automatically handles provider discovery, instantiation, and validation. No updates needed to [`main.rs`](../../src/main.rs:1) or [`args.rs`](../../src/args.rs:1).
+
+Example registration (add to provider module):
+```rust
+inventory::submit! {
+    ProviderMetadata {
+        name: "providername",
+        description: "Provider Description",
+        api_key_var: "PROVIDER_API_KEY",
+        instantiate: || {
+            let api_key = ProviderName::get_api_key()?;
+            Ok(Box::new(ProviderName::new(api_key)))
+        },
+    }
+}
+```
 
 ## Unit Conversion Inconsistency Between Providers
 

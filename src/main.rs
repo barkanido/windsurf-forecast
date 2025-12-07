@@ -9,12 +9,12 @@ use std::fs;
 mod args;
 mod config;
 mod forecast_provider;
+mod provider_registry;
 mod providers;
 
 use args::{Args, validate_args};
 use config::{load_config, save_config, parse_timezone, validate_timezone_coordinates, warn_if_default_timezone, pick_timezone_interactive};
-use forecast_provider::{ForecastProvider, WeatherDataPoint, set_serialization_timezone};
-use providers::{stormglass::StormGlassProvider, openweathermap::OpenWeatherMapProvider};
+use forecast_provider::{WeatherDataPoint, set_serialization_timezone};
 
 // ============================================================================
 // Data Structures for Output
@@ -36,15 +36,6 @@ struct TransformedMetaData {
 struct TransformedWeatherResponse {
     hours: Vec<WeatherDataPoint>,
     meta: TransformedMetaData,
-}
-
-fn create_provider(provider_name: &str, api_key: String) -> Result<Box<dyn ForecastProvider>> {
-    match provider_name {
-        "stormglass" => Ok(Box::new(StormGlassProvider::new(api_key))),
-        "openweathermap" => Ok(Box::new(OpenWeatherMapProvider::new(api_key))),
-        // Future providers can be added here
-        _ => unreachable!("Provider validation should have caught this"),
-    }
 }
 
 // ============================================================================
@@ -124,6 +115,9 @@ async fn run() -> Result<()> {
     // Load .env file if present
     dotenv::dotenv().ok();
 
+    // Validate provider registry (check for duplicates)
+    provider_registry::check_duplicates();
+
     // Parse command line arguments
     let args = Args::parse();
 
@@ -188,16 +182,8 @@ async fn run() -> Result<()> {
     // Validate all arguments
     validate_args(&args)?;
 
-    // Get API key for the selected provider
-    let api_key = match args.provider.as_str() {
-        "stormglass" => StormGlassProvider::get_api_key()?,
-        "openweathermap" => OpenWeatherMapProvider::get_api_key()?,
-        // Future providers can be added here
-        _ => unreachable!("Provider validation should have caught this"),
-    };
-
-    // Create provider instance
-    let provider = create_provider(&args.provider, api_key)?;
+    // Create provider instance using registry
+    let provider = provider_registry::create_provider(&args.provider)?;
 
     // Calculate start and end dates
     let now = Utc::now();
