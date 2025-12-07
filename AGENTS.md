@@ -53,10 +53,28 @@ cargo run --release
 - [`OpenWeatherMapProvider`](src/providers/openweathermap.rs:34) returns wind speeds in m/s WITHOUT conversion
 - This inconsistency means output units differ between providers
 
-### Timezone Transformation
-- All timestamps are automatically converted from UTC to Asia/Jerusalem timezone in serialization
-- See custom serializer [`serialize_time_jerusalem()`](src/forecast_provider.rs:7) in WeatherDataPoint
-- Format: "YYYY-MM-DD HH:MM" in Jerusalem time
+### Timezone Conversion Architecture
+**Current State**: Timezone conversion happens in the **transform layer**, NOT during serialization.
+
+- **Transform Layer**: Providers parse UTC timestamps as [`UtcTimestamp`](src/forecast_provider.rs:16) and explicitly convert to [`LocalTimestamp`](src/forecast_provider.rs:44) using [`convert_timezone()`](src/forecast_provider.rs:79)
+- **Type Safety**: Compiler enforces correct timezone handling - cannot mix `UtcTimestamp` and `LocalTimestamp`
+- **User Configuration**: Target timezone set via `--timezone` (or `-z`) CLI flag, defaults to UTC with warning
+- **No Thread-Local State**: Timezone conversion is explicit in provider code, not hidden in serialization
+- **Output Format**: JSON timestamps formatted as "YYYY-MM-DD HH:MM" in user-specified timezone
+
+Example flow in [`StormGlassProvider`](src/providers/stormglass.rs:83):
+```rust
+// 1. Parse API response as UTC
+let utc = UtcTimestamp::from_rfc3339(hour.time)?;
+
+// 2. Explicitly convert to target timezone in transform layer
+let local = convert_timezone(utc, target_tz)?;
+
+// 3. Return WeatherDataPoint with LocalTimestamp
+WeatherDataPoint { time: local, ... }
+```
+
+**Key Principle**: Conversion is visible and explicit in provider transform code, not hidden in serialization.
 
 ### Provider Registration (Centralized Registry)
 When adding a new provider, you ONLY need to add registration in the provider module itself:

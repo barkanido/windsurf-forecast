@@ -13,8 +13,8 @@ mod provider_registry;
 mod providers;
 
 use args::{Args, validate_args};
-use config::{load_config, save_config, parse_timezone, validate_timezone_coordinates, warn_if_default_timezone, pick_timezone_interactive};
-use forecast_provider::{WeatherDataPoint, set_serialization_timezone};
+use config::{load_config, save_config, validate_timezone_coordinates, pick_timezone_interactive, TimezoneConfig};
+use forecast_provider::WeatherDataPoint;
 
 // ============================================================================
 // Data Structures for Output
@@ -154,42 +154,11 @@ async fn run() -> Result<()> {
         return Ok(());
     }
 
-    // Load configuration
-    let mut config = load_config(args.config.as_ref())?;
-
-    // Determine timezone: CLI flag > config file > default (UTC)
-    let timezone_string = if let Some(ref tz) = args.timezone {
-        // CLI flag takes precedence
-        tz.clone()
-    } else {
-        // Use config file timezone
-        config.general.timezone.clone()
-    };
-
-    // Parse and validate timezone
-    let timezone = parse_timezone(&timezone_string)?;
-
-    // Check if using default timezone without explicit configuration
-    let was_explicitly_set = args.timezone.is_some() ||
-        (config.general.timezone != "UTC" || args.config.is_some());
-    warn_if_default_timezone(&timezone_string, was_explicitly_set);
-
-    // If timezone was specified via CLI flag, save it to config
-    if args.timezone.is_some() && args.timezone.as_ref().unwrap() != &config.general.timezone {
-        config.general.timezone = timezone_string.clone();
-        save_config(&config, args.config.as_ref())?;
-        
-        let config_path = if let Some(ref path) = args.config {
-            path.display().to_string()
-        } else {
-            config::get_default_config_path()?.display().to_string()
-        };
-        
-        println!("✓ Timezone '{}' saved to config file: {}", timezone_string, config_path);
-    }
-
-    // Set timezone for serialization
-    set_serialization_timezone(timezone);
+    // Load timezone configuration with precedence: CLI > ENV > default UTC
+    let timezone_config = TimezoneConfig::load_with_precedence(args.timezone.clone())?;
+    timezone_config.display_default_warning();
+    
+    let timezone = timezone_config.timezone;
 
     // Validate all arguments
     validate_args(&args)?;
@@ -218,8 +187,8 @@ async fn run() -> Result<()> {
     // Validate timezone against coordinates
     validate_timezone_coordinates(timezone, lat, lng);
 
-    // Fetch weather data using the provider
-    let weather_points = provider.fetch_weather_data(start, end, lat, lng).await?;
+    // Fetch weather data using the provider with target timezone
+    let weather_points = provider.fetch_weather_data(start, end, lat, lng, timezone).await?;
 
     // Create response with weather data - no transformation needed
     // WeatherDataPoint now serializes directly with proper formatting

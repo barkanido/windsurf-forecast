@@ -73,16 +73,18 @@ The application supports configurable timezones for displaying forecast timestam
 
 **Setting Timezone:**
 
-1. **Interactive Picker** (Recommended for first-time setup):
+1. **Command Line Flag**:
+   ```bash
+   cargo run --release -- --timezone America/New_York
+   # Or use short form:
+   cargo run --release -- -z America/New_York
+   ```
+
+2. **Interactive Picker** (Recommended for first-time setup):
    ```bash
    cargo run --release -- --pick-timezone
    ```
    This launches a searchable, filterable list of all IANA timezones.
-
-2. **Direct Specification**:
-   ```bash
-   cargo run --release -- --timezone America/New_York
-   ```
 
 3. **Manual Config File**:
    Edit `~/.windsurf-config.toml`:
@@ -121,9 +123,10 @@ Or run the compiled binary directly:
 - `--days-ahead <N>`: Number of days to forecast ahead (1-7, default: 4)
 - `--first-day-offset <N>`: Number of days to offset the start date (0-7, default: 0 for today)
 - `--provider <PROVIDER>`: Weather forecast provider to use (default: "stormglass")
-- `--timezone <TIMEZONE>`: Timezone for displaying timestamps (overrides config file)
+- `--timezone <TIMEZONE>`, `-z <TIMEZONE>`: Timezone for displaying timestamps (overrides config file)
 - `--pick-timezone`: Launch interactive timezone picker and save to config
 - `--config <PATH>`: Path to custom config file (default: ~/.windsurf-config.toml)
+- `--list-providers`: List all available weather providers and exit
 - `--help`: Display help information
 
 **Available Providers:**
@@ -145,10 +148,12 @@ cargo run --release -- --days-ahead 3
 # Explicitly specify the provider
 cargo run --release -- --provider openweathermap --days-ahead 2
 
-# Use a specific timezone
+# Use a specific timezone (command line)
 cargo run --release -- --timezone America/New_York
+# Or use short form
+cargo run --release -- -z America/New_York
 
-# Pick timezone interactively (first-time setup)
+# Pick timezone interactively (saves to config file)
 cargo run --release -- --pick-timezone
 
 # Get 2-day forecast starting 3 days from now

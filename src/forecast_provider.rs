@@ -1,50 +1,78 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
 use chrono_tz::Tz;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Serialize, Serializer};
 
-/// Custom serializer for time field - converts UTC to specified timezone
-fn serialize_time_with_tz<S>(time: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    // This serializer will be called during JSON serialization
-    // We need to get the timezone from context, but serde doesn't support context passing easily
-    // So we'll use a thread-local variable set before serialization
-    use std::cell::RefCell;
-    
-    thread_local! {
-        static TIMEZONE: RefCell<Tz> = RefCell::new(chrono_tz::UTC);
+// ============================================================================
+// Newtype Wrappers for Timezone Safety
+// ============================================================================
+
+/// Newtype wrapper for UTC timestamps
+///
+/// Used internally to represent timestamps as received from weather APIs.
+/// This type makes it explicit that a timestamp is in UTC and has not yet
+/// been converted to the user's target timezone.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct UtcTimestamp(pub DateTime<Utc>);
+
+impl UtcTimestamp {
+    /// Parse from RFC3339 string (common API format)
+    pub fn from_rfc3339(s: &str) -> Result<Self> {
+        let dt = DateTime::parse_from_rfc3339(s)
+            .map_err(|e| anyhow!("Failed to parse UTC timestamp from '{}': {}", s, e))?
+            .with_timezone(&Utc);
+        Ok(Self(dt))
     }
-    
-    let formatted = TIMEZONE.with(|tz| {
-        let tz = *tz.borrow();
-        let local_time = tz.from_utc_datetime(&time.naive_utc());
-        local_time.format("%Y-%m-%d %H:%M").to_string()
-    });
-    
-    serializer.serialize_str(&formatted)
 }
 
-/// Set the timezone to use for serialization
-pub fn set_serialization_timezone(tz: Tz) {
-    use std::cell::RefCell;
-    
-    thread_local! {
-        static TIMEZONE: RefCell<Tz> = RefCell::new(chrono_tz::UTC);
-    }
-    
-    TIMEZONE.with(|timezone| {
-        *timezone.borrow_mut() = tz;
-    });
+/// Newtype wrapper for timezone-converted timestamps
+///
+/// Used in output structures after conversion to user's target timezone.
+/// This type makes it explicit that a timestamp has been converted and is
+/// ready for display/serialization.
+#[derive(Debug, Clone)]
+pub struct LocalTimestamp {
+    inner: DateTime<Tz>,
 }
+
+impl LocalTimestamp {
+    /// Create a new LocalTimestamp from a DateTime<Tz>
+    pub fn new(dt: DateTime<Tz>) -> Self {
+        Self { inner: dt }
+    }
+}
+
+// Custom serialization to maintain "YYYY-MM-DD HH:MM" format
+impl Serialize for LocalTimestamp {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // Format: "YYYY-MM-DD HH:MM" (not ISO 8601)
+        // This maintains backward compatibility with existing output
+        let formatted = self.inner.format("%Y-%m-%d %H:%M").to_string();
+        serializer.serialize_str(&formatted)
+    }
+}
+
+/// Convert a UTC timestamp to the target timezone
+///
+/// This is the core timezone conversion function that should be called
+/// in the provider transform layer (not during serialization).
+pub fn convert_timezone(utc: UtcTimestamp, target_tz: Tz) -> Result<LocalTimestamp> {
+    let local = target_tz.from_utc_datetime(&utc.0.naive_utc());
+    Ok(LocalTimestamp::new(local))
+}
+
+// ============================================================================
+// WeatherDataPoint Structure
+// ============================================================================
 
 /// Common weather data structure that all providers transform to
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct WeatherDataPoint {
-    #[serde(serialize_with = "serialize_time_with_tz")]
-    pub time: DateTime<Utc>,
+    pub time: LocalTimestamp,
     
     #[serde(rename = "airTemperature", skip_serializing_if = "Option::is_none")]
     pub air_temperature: Option<f64>,
@@ -91,5 +119,6 @@ pub trait ForecastProvider: Send + Sync {
         end: DateTime<Utc>,
         lat: f64,
         lng: f64,
+        target_tz: Tz,
     ) -> Result<Vec<WeatherDataPoint>>;
 }

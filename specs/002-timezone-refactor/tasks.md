@@ -25,9 +25,9 @@
 
 **Purpose**: Project structure validation and dependency verification
 
-- [ ] T001 Verify Rust 1.75+ and chrono-tz 0.8 dependencies in Cargo.toml
-- [ ] T002 [P] Run cargo check to verify current codebase compiles without errors
-- [ ] T003 [P] Run cargo clippy and document any existing warnings as baseline
+- [x] T001 Verify Rust 1.75+ and chrono-tz 0.8 dependencies in Cargo.toml
+- [x] T002 [P] Run cargo check to verify current codebase compiles without errors
+- [x] T003 [P] Run cargo clippy and document any existing warnings as baseline
 
 ---
 
@@ -37,13 +37,13 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Add newtype wrapper UtcTimestamp to src/forecast_provider.rs
-- [ ] T005 [P] Add newtype wrapper LocalTimestamp with custom Serialize impl to src/forecast_provider.rs
-- [ ] T006 [P] Add convert_timezone() function to src/forecast_provider.rs
-- [ ] T007 Add TimezoneConfig struct to src/config.rs with explicit(), default_utc(), from_string() methods
-- [ ] T008 [P] Add TimezoneConfig::load_with_precedence() method to src/config.rs
-- [ ] T009 [P] Add TimezoneConfig::display_default_warning() method to src/config.rs
-- [ ] T010 Add --timezone CLI flag (short -z) to Args struct in src/args.rs
+- [x] T004 Add newtype wrapper UtcTimestamp to src/forecast_provider.rs
+- [x] T005 [P] Add newtype wrapper LocalTimestamp with custom Serialize impl to src/forecast_provider.rs
+- [x] T006 [P] Add convert_timezone() function to src/forecast_provider.rs
+- [x] T007 Add TimezoneConfig struct to src/config.rs with explicit(), default_utc(), from_string() methods
+- [x] T008 [P] Add TimezoneConfig::load_with_precedence() method to src/config.rs
+- [x] T009 [P] Add TimezoneConfig::display_default_warning() method to src/config.rs
+- [x] T010 Add --timezone CLI flag (short -z) to Args struct in src/args.rs
 
 **Testing Workflow** (Constitution VI - apply for ALL code changes):
 - Run `cargo check` to verify compilation (fix errors and warnings)
@@ -64,18 +64,18 @@
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Update ForecastProvider trait signature in src/forecast_provider.rs to add target_tz: Tz parameter to fetch_weather_data()
-- [ ] T012 [US1] Update StormGlassProvider::fetch_weather_data() signature in src/providers/stormglass.rs to accept target_tz: Tz parameter
-- [ ] T013 [US1] Modify StormGlass timestamp parsing in src/providers/stormglass.rs to use UtcTimestamp::from_rfc3339()
-- [ ] T014 [US1] Add timezone conversion call in StormGlass transform logic in src/providers/stormglass.rs using convert_timezone(utc, target_tz)
-- [ ] T015 [US1] Update StormGlass WeatherDataPoint construction in src/providers/stormglass.rs to use LocalTimestamp for time field
-- [ ] T016 [US1] Update OpenWeatherMapProvider::fetch_weather_data() signature in src/providers/openweathermap.rs to accept target_tz: Tz parameter
-- [ ] T017 [US1] Modify OpenWeatherMap timestamp parsing in src/providers/openweathermap.rs to use UtcTimestamp
-- [ ] T018 [US1] Add timezone conversion call in OpenWeatherMap transform logic in src/providers/openweathermap.rs using convert_timezone(utc, target_tz)
-- [ ] T019 [US1] Update OpenWeatherMap WeatherDataPoint construction in src/providers/openweathermap.rs to use LocalTimestamp for time field
-- [ ] T020 [US1] Load TimezoneConfig in src/main.rs using TimezoneConfig::load_with_precedence(args.timezone)
-- [ ] T021 [US1] Add timezone_config.display_default_warning() call in src/main.rs after config loading
-- [ ] T022 [US1] Update provider.fetch_weather_data() call in src/main.rs to pass timezone_config.timezone as target_tz argument
+- [x] T011 [US1] Update ForecastProvider trait signature in src/forecast_provider.rs to add target_tz: Tz parameter to fetch_weather_data()
+- [x] T012 [US1] Update StormGlassProvider::fetch_weather_data() signature in src/providers/stormglass.rs to accept target_tz: Tz parameter
+- [x] T013 [US1] Modify StormGlass timestamp parsing in src/providers/stormglass.rs to use UtcTimestamp::from_rfc3339()
+- [x] T014 [US1] Add timezone conversion call in StormGlass transform logic in src/providers/stormglass.rs using convert_timezone(utc, target_tz)
+- [x] T015 [US1] Update StormGlass WeatherDataPoint construction in src/providers/stormglass.rs to use LocalTimestamp for time field
+- [x] T016 [US1] Update OpenWeatherMapProvider::fetch_weather_data() signature in src/providers/openweathermap.rs to accept target_tz: Tz parameter
+- [x] T017 [US1] Modify OpenWeatherMap timestamp parsing in src/providers/openweathermap.rs to use UtcTimestamp
+- [x] T018 [US1] Add timezone conversion call in OpenWeatherMap transform logic in src/providers/openweathermap.rs using convert_timezone(utc, target_tz)
+- [x] T019 [US1] Update OpenWeatherMap WeatherDataPoint construction in src/providers/openweathermap.rs to use LocalTimestamp for time field
+- [x] T020 [US1] Load TimezoneConfig in src/main.rs using TimezoneConfig::load_with_precedence(args.timezone)
+- [x] T021 [US1] Add timezone_config.display_default_warning() call in src/main.rs after config loading
+- [x] T022 [US1] Update provider.fetch_weather_data() call in src/main.rs to pass timezone_config.timezone as target_tz argument
 
 **Checkpoint**: At this point, timezone conversion is explicit in transform layer and visible in provider code
 
@@ -89,10 +89,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Change WeatherDataPoint.time field type from DateTime<Utc> to LocalTimestamp in src/forecast_provider.rs
-- [ ] T024 [US2] Remove #[serde(serialize_with = "serialize_time_with_tz")] attribute from WeatherDataPoint.time field in src/forecast_provider.rs
-- [ ] T025 [US2] Verify all provider transform functions return WeatherDataPoint with LocalTimestamp (compile-time check via cargo check)
-- [ ] T026 [US2] Run cargo check and verify compilation errors if any provider attempts incorrect timezone usage
+- [x] T023 [US2] Change WeatherDataPoint.time field type from DateTime<Utc> to LocalTimestamp in src/forecast_provider.rs
+- [x] T024 [US2] Remove #[serde(serialize_with = "serialize_time_with_tz")] attribute from WeatherDataPoint.time field in src/forecast_provider.rs
+- [x] T025 [US2] Verify all provider transform functions return WeatherDataPoint with LocalTimestamp (compile-time check via cargo check)
+- [x] T026 [US2] Run cargo check and verify compilation errors if any provider attempts incorrect timezone usage
 
 **Checkpoint**: Type system now prevents timezone errors at compile time
 
@@ -106,11 +106,11 @@
 
 ### Implementation for User Story 3
 
-- [ ] T027 [US3] Delete serialize_time_with_tz() function from src/forecast_provider.rs
-- [ ] T028 [US3] Delete set_serialization_timezone() function if present in src/forecast_provider.rs or src/main.rs
-- [ ] T029 [US3] Remove any thread_local! macro usage related to timezone from src/forecast_provider.rs
-- [ ] T030 [US3] Remove call to set_serialization_timezone() from src/main.rs if present
-- [ ] T031 [US3] Verify grep for "thread_local" in src/ returns zero timezone-related matches
+- [x] T027 [US3] Delete serialize_time_with_tz() function from src/forecast_provider.rs
+- [x] T028 [US3] Delete set_serialization_timezone() function if present in src/forecast_provider.rs or src/main.rs
+- [x] T029 [US3] Remove any thread_local! macro usage related to timezone from src/forecast_provider.rs
+- [x] T030 [US3] Remove call to set_serialization_timezone() from src/main.rs if present
+- [x] T031 [US3] Verify grep for "thread_local" in src/ returns zero timezone-related matches
 
 **Checkpoint**: All thread-local state eliminated, serialization is pure formatting
 
@@ -124,13 +124,13 @@
 
 ### Implementation for User Story 4
 
-- [ ] T032 [US4] Verify --timezone flag with -z alias is functional in src/args.rs (from Phase 2)
-- [ ] T033 [US4] Test CLI flag: cargo run -- --provider stormglass --timezone "America/New_York" --days-ahead 2
-- [ ] T034 [US4] Test short form: cargo run -- --provider stormglass --tz "Europe/London" --days-ahead 2
-- [ ] T035 [US4] Test environment variable: set FORECAST_TIMEZONE=Asia/Tokyo and cargo run -- --provider openweathermap --days-ahead 3
-- [ ] T036 [US4] Test default UTC with warning: cargo run -- --provider stormglass --days-ahead 2 (verify warning appears on stderr)
-- [ ] T037 [US4] Test invalid timezone error: cargo run -- --timezone "Invalid/Zone" (verify actionable error with examples)
-- [ ] T038 [US4] Test CLI precedence over env: set FORECAST_TIMEZONE=UTC and cargo run -- --timezone "America/New_York" (verify New York used)
+- [x] T032 [US4] Verify --timezone flag with -z alias is functional in src/args.rs (from Phase 2)
+- [x] T033 [US4] Test CLI flag: cargo run -- --provider stormglass --timezone "America/New_York" --days-ahead 2
+- [x] T034 [US4] Test short form: cargo run -- --provider stormglass --tz "Europe/London" --days-ahead 2
+- [x] T035 [US4] Test environment variable: set FORECAST_TIMEZONE=Asia/Tokyo and cargo run -- --provider openweathermap --days-ahead 3
+- [x] T036 [US4] Test default UTC with warning: cargo run -- --provider stormglass --days-ahead 2 (verify warning appears on stderr)
+- [x] T037 [US4] Test invalid timezone error: cargo run -- --timezone "Invalid/Zone" (verify actionable error with examples)
+- [x] T038 [US4] Test CLI precedence over env: set FORECAST_TIMEZONE=UTC and cargo run -- --timezone "America/New_York" (verify New York used)
 
 **Checkpoint**: Users can configure any valid IANA timezone, defaults work correctly
 
@@ -163,14 +163,14 @@
 
 **Purpose**: Documentation, validation, and final cleanup
 
-- [ ] T049 [P] Update AGENTS.md with timezone conversion patterns from specs/002-timezone-refactor/plan.md
-- [ ] T050 [P] Update README.md with --timezone flag documentation and FORECAST_TIMEZONE environment variable
-- [ ] T051 [P] Update .env.example with FORECAST_TIMEZONE=UTC example
-- [ ] T052 Run full validation per specs/002-timezone-refactor/quickstart.md success checklist
-- [ ] T053 [P] Verify JSON output format unchanged: "YYYY-MM-DD HH:MM" (backward compatibility check)
-- [ ] T054 [P] Run cargo clippy --all-targets and address any new warnings
-- [ ] T055 Verify constitution compliance per specs/002-timezone-refactor/plan.md constitution check section
-- [ ] T056 Final end-to-end test with cargo run --release for both providers across multiple timezones
+- [x] T049 [P] Update AGENTS.md with timezone conversion patterns from specs/002-timezone-refactor/plan.md
+- [x] T050 [P] Update README.md with --timezone flag documentation and FORECAST_TIMEZONE environment variable
+- [x] T051 [P] Update .env.example with FORECAST_TIMEZONE=UTC example
+- [x] T052 Run full validation per specs/002-timezone-refactor/quickstart.md success checklist
+- [x] T053 [P] Verify JSON output format unchanged: "YYYY-MM-DD HH:MM" (backward compatibility check)
+- [x] T054 [P] Run cargo clippy --all-targets and address any new warnings
+- [x] T055 Verify constitution compliance per specs/002-timezone-refactor/plan.md constitution check section
+- [x] T056 Final end-to-end test with cargo run --release for both providers across multiple timezones
 
 ---
 

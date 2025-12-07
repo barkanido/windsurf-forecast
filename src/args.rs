@@ -48,7 +48,7 @@ pub struct Args {
 
     /// Timezone for displaying timestamps (e.g., "UTC", "America/New_York", "Asia/Jerusalem")
     /// Overrides timezone from config file
-    #[arg(long, value_name = "TIMEZONE")]
+    #[arg(long, short = 'z', value_name = "TIMEZONE")]
     pub timezone: Option<String>,
 
     /// Launch interactive timezone picker and save selection to config

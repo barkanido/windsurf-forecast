@@ -1,8 +1,9 @@
-use crate::forecast_provider::{ForecastProvider, WeatherDataPoint};
+use crate::forecast_provider::{ForecastProvider, WeatherDataPoint, UtcTimestamp, convert_timezone};
 use crate::provider_registry::ProviderMetadata;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -15,6 +16,7 @@ struct RawHourlyData {
     dt: i64, //unix timestamp, UTC
     main: MainData,
     wind: WindData,
+    #[allow(dead_code)]  // Part of API response but not used
     timezone: i64,
 }
 
@@ -41,12 +43,17 @@ impl OpenWeatherMapProvider {
         Self { api_key }
     }
 
-    fn transform_hour(hour: RawHourlyData) -> Result<WeatherDataPoint> {
-        let time = DateTime::<Utc>::from_timestamp(hour.dt, 0)
+    fn transform_hour(hour: RawHourlyData, target_tz: Tz) -> Result<WeatherDataPoint> {
+        // Parse Unix timestamp as UTC
+        let utc_datetime = DateTime::<Utc>::from_timestamp(hour.dt, 0)
             .ok_or(anyhow::anyhow!("Could not parse timestamp"))?;
+        let utc = UtcTimestamp(utc_datetime);
+        
+        // Convert to target timezone
+        let local = convert_timezone(utc, target_tz)?;
 
         Ok(WeatherDataPoint {
-            time,
+            time: local,
             air_temperature: Some(hour.main.air_temperature),
             wind_speed: hour.wind.wind_speed,
             wind_direction: hour.wind.wind_direction,
@@ -78,6 +85,7 @@ impl ForecastProvider for OpenWeatherMapProvider {
         end: DateTime<Utc>,
         lat: f64,
         lng: f64,
+        target_tz: Tz,
     ) -> Result<Vec<WeatherDataPoint>> {
         println!(
             "Fetching weather data from {} to {} for coordinates ({}, {})",
@@ -117,7 +125,7 @@ impl ForecastProvider for OpenWeatherMapProvider {
         // Transform all hourly data
         let mut weather_points = Vec::with_capacity(data.list.len());
         for hour in data.list {
-            weather_points.push(Self::transform_hour(hour)?);
+            weather_points.push(Self::transform_hour(hour, target_tz)?);
         }
 
         Ok(weather_points)

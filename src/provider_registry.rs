@@ -191,13 +191,6 @@ pub fn validate_provider_name(name: &str) -> Result<()> {
 /// 
 /// This is intentional - duplicates indicate a programming error that must be
 /// fixed before the application can run.
-/// 
-/// # Example
-/// ```rust
-/// fn main() {
-///     check_duplicates(); // Panics if duplicates found
-///     // ... rest of application logic
-/// }
 /// ```
 pub fn check_duplicates() {
     let mut seen = HashMap::new();
@@ -217,19 +210,4 @@ pub fn check_duplicates() {
             );
         }
     }
-}
-
-/// Get count of registered providers
-/// 
-/// Utility function for diagnostics and testing.
-/// 
-/// # Returns
-/// Number of providers currently registered
-/// 
-/// # Example
-/// ```rust
-/// println!("Registered providers: {}", provider_count());
-/// ```
-pub fn provider_count() -> usize {
-    inventory::iter::<ProviderMetadata>().count()
 }

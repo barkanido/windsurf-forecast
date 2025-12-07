@@ -1,12 +1,13 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 use reqwest;
 use serde::Deserialize;
 use std::env;
 use thiserror::Error;
 
-use crate::forecast_provider::{ForecastProvider, WeatherDataPoint};
+use crate::forecast_provider::{ForecastProvider, WeatherDataPoint, UtcTimestamp, convert_timezone};
 use crate::provider_registry::ProviderMetadata;
 
 // ============================================================================
@@ -93,13 +94,16 @@ impl StormGlassProvider {
     /// Convert m/s to knots
     const MS_TO_KNOTS: f64 = 1.94384;
 
-    fn transform_hour(hour: RawHourlyData) -> Result<WeatherDataPoint> {
-        let time = DateTime::parse_from_rfc3339(&hour.time)
-            .context("Failed to parse timestamp")?
-            .with_timezone(&Utc);
+    fn transform_hour(hour: RawHourlyData, target_tz: Tz) -> Result<WeatherDataPoint> {
+        // Parse timestamp as UTC
+        let utc = UtcTimestamp::from_rfc3339(&hour.time)
+            .context("Failed to parse timestamp")?;
+        
+        // Convert to target timezone
+        let local = convert_timezone(utc, target_tz)?;
 
         Ok(WeatherDataPoint {
-            time,
+            time: local,
             air_temperature: hour.air_temperature.map(|s| s.sg),
             wind_speed: hour.wind_speed.map(|s| s.sg * Self::MS_TO_KNOTS),
             wind_direction: hour.wind_direction.map(|s| s.sg),
@@ -131,8 +135,9 @@ impl ForecastProvider for StormGlassProvider {
         end: DateTime<Utc>,
         lat: f64,
         lng: f64,
+        target_tz: Tz,
     ) -> Result<Vec<WeatherDataPoint>> {
-        let params = vec![
+        let params = [
             "airTemperature",
             "gust",
             "swellDirection",
@@ -178,7 +183,7 @@ impl ForecastProvider for StormGlassProvider {
         // Transform all hourly data
         let mut weather_points = Vec::with_capacity(data.hours.len());
         for hour in data.hours {
-            weather_points.push(Self::transform_hour(hour)?);
+            weather_points.push(Self::transform_hour(hour, target_tz)?);
         }
 
         Ok(weather_points)

@@ -1,16 +1,16 @@
 <!--
 Sync Impact Report:
-Version: 1.0.0 → 1.1.0 (Added Testing Workflow Principle)
-Modified Principles: None (existing principles unchanged)
-Added Sections: VI. Testing Workflow (new principle in Core Principles)
+Version: 1.1.0 → 1.2.0 (Updated Timezone Standardization Principle)
+Modified Principles: III. Timezone Standardization (complete architectural change)
+Added Sections: None
 Removed Sections: None
 Templates Status:
   ✅ plan-template.md - Already aligned with cargo workflow
   ✅ spec-template.md - Compatible with testing requirements
   ✅ tasks-template.md - Supports iterative testing approach
-  ⚠ AGENTS.md - REQUIRES UPDATE with new cargo testing commands
-  ⚠ README.md - May need testing section clarification
-Follow-up TODOs: Update AGENTS.md Build & Run Commands section with detailed testing workflow
+  ✅ AGENTS.md - UPDATED with new timezone conversion architecture
+  ✅ README.md - UPDATED to remove environment variable references
+Follow-up TODOs: None - all documentation updated
 -->
 
 # Weather Forecast Application Constitution
@@ -37,15 +37,29 @@ Wind speed and other measurements MUST have clearly documented unit conventions:
 
 **Rationale**: Different weather APIs return data in different units. Rather than force artificial consistency, we preserve provider-specific units and document them explicitly, preventing silent unit conversion bugs.
 
-### III. Timezone Standardization
+### III. Timezone Conversion Architecture
 
-All timestamps MUST be:
-- Stored internally as UTC ([`DateTime<Utc>`](../../src/forecast_provider.rs:20))
-- Automatically converted to Asia/Jerusalem timezone during JSON serialization
-- Formatted as "YYYY-MM-DD HH:MM" (not ISO 8601) for output
-- Converted using the custom serializer [`serialize_time_jerusalem()`](../../src/forecast_provider.rs:7)
+All timestamps MUST follow explicit conversion in the transform layer:
+- **Parsed as UTC**: API responses parsed as [`UtcTimestamp`](../../src/forecast_provider.rs:16) newtype wrapper
+- **Converted in Transform Layer**: Providers explicitly call [`convert_timezone(utc, target_tz)`](../../src/forecast_provider.rs:79) to create [`LocalTimestamp`](../../src/forecast_provider.rs:44)
+- **Type Safety**: Compiler enforces correct timezone handling - cannot mix `UtcTimestamp` and `LocalTimestamp` types
+- **User Configuration**: Target timezone set via `--timezone` (or `-z`) CLI flag, defaults to UTC with warning
+- **No Thread-Local State**: Timezone conversion is explicit in provider code, not hidden in serialization layer
+- **Output Format**: JSON timestamps formatted as "YYYY-MM-DD HH:MM" (not ISO 8601) in user-specified timezone
 
-**Rationale**: The application targets a specific geographic location (32°29'12.2"N 34°53'19.4"E). Standardizing output to local time eliminates timezone confusion for end users while maintaining UTC internally for calculations.
+Example from [`StormGlassProvider`](../../src/providers/stormglass.rs:83):
+```rust
+// 1. Parse API response as UTC
+let utc = UtcTimestamp::from_rfc3339(hour.time)?;
+
+// 2. Explicitly convert to target timezone in transform layer
+let local = convert_timezone(utc, target_tz)?;
+
+// 3. Return WeatherDataPoint with LocalTimestamp
+WeatherDataPoint { time: local, ... }
+```
+
+**Rationale**: Explicit timezone conversion in the transform layer makes the conversion point visible and testable in provider code. Type safety prevents timezone bugs at compile time. Removing thread-local state eliminates concurrency issues and makes the code easier to reason about. User-configurable timezones support diverse geographic locations while maintaining a clear default.
 
 ### IV. Hard-Coded Configuration
 
@@ -175,8 +189,8 @@ Constitution changes require:
 Deviations from simplicity MUST be justified:
 - Provider-specific unit handling → Reflects upstream API reality
 - Hard-coded location → Single-purpose application scope
-- Timezone conversion in serialization → User experience priority
-- Three-location provider registration → Rust trait system constraints
+- Explicit timezone conversion in transform layer → Type safety and testability priority
+- Newtype wrappers for timestamps → Compile-time timezone correctness guarantees
 - Testing workflow structure → Balance development speed with code quality
 
 ### Compliance Review
@@ -184,9 +198,10 @@ Deviations from simplicity MUST be justified:
 All code changes MUST verify:
 - Provider architecture pattern maintained
 - Unit documentation present for new measurements
-- Timezone handling follows standardization principle
+- Timezone handling follows explicit conversion in transform layer principle
+- Type safety enforced via `UtcTimestamp` and `LocalTimestamp` wrappers
 - Error messages are actionable
 - Testing workflow followed (check → build → clippy → release)
 - [`AGENTS.md`](../../AGENTS.md:1) updated for non-obvious patterns
 
-**Version**: 1.1.0 | **Ratified**: 2025-12-07 | **Last Amended**: 2025-12-07
+**Version**: 1.2.0 | **Ratified**: 2025-12-07 | **Last Amended**: 2025-12-07

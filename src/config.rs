@@ -1,14 +1,104 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
 // ============================================================================
+// Timezone Configuration
+// ============================================================================
+
+/// Configuration for timezone handling
+///
+/// Manages user's timezone preferences with precedence:
+/// 1. CLI --timezone flag (highest)
+/// 2. Environment variable FORECAST_TIMEZONE
+/// 3. Default to UTC with warning (lowest)
+#[derive(Debug, Clone)]
+pub struct TimezoneConfig {
+    /// Target timezone for output timestamps
+    pub timezone: Tz,
+    
+    /// Whether timezone was explicitly set by user (vs default)
+    /// Used to determine if warning should be displayed
+    pub explicit: bool,
+}
+
+impl TimezoneConfig {
+    /// Create from explicit user input
+    pub fn explicit(tz: Tz) -> Self {
+        Self {
+            timezone: tz,
+            explicit: true,
+        }
+    }
+    
+    /// Create default (UTC) with warning flag
+    fn default_utc() -> Self {
+        Self {
+            timezone: chrono_tz::UTC,
+            explicit: false,
+        }
+    }
+    
+    /// Parse timezone from string identifier
+    fn from_string(s: &str) -> Result<Self> {
+        let tz = s.parse::<Tz>()
+            .map_err(|_| anyhow!(
+                "Invalid timezone identifier: '{}'\n\
+                 \n\
+                 Examples of valid identifiers:\n\
+                 - UTC\n\
+                 - America/New_York\n\
+                 - America/Los_Angeles\n\
+                 - Europe/London\n\
+                 - Europe/Paris\n\
+                 - Asia/Jerusalem\n\
+                 - Asia/Tokyo\n\
+                 - Australia/Sydney\n\
+                 \n\
+                 For a complete list, see:\n\
+                 https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
+                s
+            ))?;
+        Ok(Self::explicit(tz))
+    }
+    
+    /// Load timezone configuration with standard precedence rules
+    ///
+    /// Precedence (highest to lowest):
+    /// 1. CLI argument (if provided)
+    /// 2. Default to UTC with warning
+    pub fn load_with_precedence(cli_tz: Option<String>) -> Result<Self> {
+        // 1. Try CLI argument
+        if let Some(tz_str) = cli_tz {
+            return Self::from_string(&tz_str);
+        }
+        
+        // 2. Default to UTC (will trigger warning)
+        Ok(Self::default_utc())
+    }
+    
+    /// Display warning if using default timezone
+    ///
+    /// Should be called once during application startup if config.explicit == false.
+    /// Writes to stderr to avoid polluting JSON output on stdout.
+    pub fn display_default_warning(&self) {
+        if !self.explicit {
+            eprintln!("Warning: No timezone configured. Using UTC as default.");
+            eprintln!("Set timezone via --timezone flag or configure in ~/.windsurf-config.toml");
+            eprintln!("Example: --timezone \"America/New_York\"");
+            eprintln!("Example: --tz \"Europe/London\" (short form)");
+            eprintln!();
+        }
+    }
+}
+
+// ============================================================================
 // Configuration Structures
 // ============================================================================
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
     pub general: GeneralConfig,
@@ -42,14 +132,6 @@ impl Default for GeneralConfig {
         Self {
             timezone: default_timezone(),
             default_provider: default_provider(),
-        }
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            general: GeneralConfig::default(),
         }
     }
 }
@@ -107,27 +189,9 @@ pub fn save_config(config: &Config, path: Option<&PathBuf>) -> Result<()> {
     Ok(())
 }
 
-/// Create default config file if it doesn't exist
-pub fn ensure_default_config() -> Result<PathBuf> {
-    let config_path = get_default_config_path()?;
-    
-    if !config_path.exists() {
-        let default_config = Config::default();
-        save_config(&default_config, Some(&config_path))?;
-    }
-    
-    Ok(config_path)
-}
-
 // ============================================================================
-// Timezone Validation
+// Timezone Validation & Interactive Selection
 // ============================================================================
-
-/// Parse and validate timezone string
-pub fn parse_timezone(tz_string: &str) -> Result<Tz> {
-    tz_string.parse::<Tz>()
-        .map_err(|_| anyhow::anyhow!("Invalid timezone: '{}'. Use standard IANA timezone names (e.g., 'UTC', 'America/New_York', 'Asia/Jerusalem')", tz_string))
-}
 
 /// Validate that coordinates are within the timezone's region
 /// Returns true if valid, false with warning if mismatch
@@ -147,19 +211,6 @@ pub fn validate_timezone_coordinates(tz: Tz, lat: f64, lng: f64) -> bool {
     }
     true
 }
-
-/// Check if timezone is the default UTC and was not explicitly set
-pub fn warn_if_default_timezone(tz_string: &str, was_explicitly_set: bool) {
-    if tz_string == "UTC" && !was_explicitly_set {
-        eprintln!("\n⚠️  WARNING: Using default timezone 'UTC'");
-        eprintln!("   Set a timezone with --timezone <TZ> or run --pick-timezone for interactive selection");
-        eprintln!("   The timezone will be saved to your config file for future use.\n");
-    }
-}
-
-// ============================================================================
-// Interactive Timezone Picker
-// ============================================================================
 
 /// Launch interactive timezone picker
 pub fn pick_timezone_interactive() -> Result<String> {
