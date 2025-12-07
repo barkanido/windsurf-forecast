@@ -109,9 +109,11 @@ inventory::submit! {
 - `days_ahead + first_day_offset` must NOT exceed 7 (enforced in [`args.rs`](src/args.rs:64))
 - This is a business rule for "reliable forecasts", not an API limitation
 
-### OpenWeatherMap Provider Uses `dotenv::var()` Directly
-- [`OpenWeatherMapProvider::get_api_key()`](src/providers/openweathermap.rs:71) calls `dotenv::var()` instead of `std::env::var()`
-- Env var name: `OPEN_WEATHER_MAP_API_KEY` (note underscores, not `OPENWEATHERMAP_API_KEY`)
+### Environment Variable Naming
+- StormGlass provider uses: `STORMGLASS_API_KEY`
+- OpenWeatherMap provider uses: `OPEN_WEATHER_MAP_API_KEY` (note underscores between words)
+- Both providers use `std::env::var()` for consistency
+- The `.env` file is loaded once at application startup in [`main.rs`](src/main.rs:1)
 
 ## Code Style
 

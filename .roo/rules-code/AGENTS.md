@@ -39,11 +39,12 @@ All [`WeatherDataPoint`](../../src/forecast_provider.rs:19) timestamps use custo
 - Formats as "YYYY-MM-DD HH:MM" (not ISO 8601)
 - This happens in serde, not in the provider transform logic
 
-## OpenWeatherMap Uses Different dotenv Access
+## Environment Variable Naming
 
-- [`OpenWeatherMapProvider::get_api_key()`](../../src/providers/openweathermap.rs:71) calls `dotenv::var()` directly
-- Other code uses `std::env::var()` after `dotenv::dotenv().ok()` in main
-- Env var name is `OPEN_WEATHER_MAP_API_KEY` (underscores, not `OPENWEATHERMAP_API_KEY`)
+- StormGlass provider uses: `STORMGLASS_API_KEY`
+- OpenWeatherMap provider uses: `OPEN_WEATHER_MAP_API_KEY` (note underscores between words)
+- Both providers use `std::env::var()` for consistency
+- The `.env` file is loaded once at application startup in [`main.rs`](../../src/main.rs:1)
 
 ## Location Configuration
 

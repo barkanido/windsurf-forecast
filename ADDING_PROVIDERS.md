@@ -163,11 +163,10 @@ cargo run -- --provider weatherapi  # Without API key
 
 ### API Key Retrieval
 
-Providers can use either:
-- `std::env::var()` - Standard environment variable access
-- `dotenv::var()` - Direct access to .env file (used by OpenWeatherMap)
-
-Choose based on your needs. Both approaches are supported.
+All providers should use `std::env::var()` for consistent environment variable access:
+- The `.env` file is loaded once at application startup in [`main.rs`](src/main.rs:1)
+- After that, all providers use `std::env::var()` to read environment variables
+- This ensures consistent behavior across all providers
 
 ## Best Practices
 
@@ -207,7 +206,7 @@ The new name automatically propagates to CLI validation, help text, and error me
 See [`src/providers/stormglass.rs`](src/providers/stormglass.rs:1) for a complete reference implementation.
 
 ### Complete Example: OpenWeatherMap Provider
-See [`src/providers/openweathermap.rs`](src/providers/openweathermap.rs:1) for an implementation using `dotenv::var()`.
+See [`src/providers/openweathermap.rs`](src/providers/openweathermap.rs:1) for another complete implementation example.
 
 ## Registry API Reference
 

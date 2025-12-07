@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use serde::Deserialize;
+use std::env;
 
 #[derive(Debug, Deserialize)]
 struct RawWeatherResponse {
@@ -76,7 +77,10 @@ impl ForecastProvider for OpenWeatherMapProvider {
     where
         Self: Sized,
     {
-        dotenv::var("OPEN_WEATHER_MAP_API_KEY").context("OPEN_WEATHER_MAP_API_KEY not set in .env")
+        env::var("OPEN_WEATHER_MAP_API_KEY").context(
+            "OPEN_WEATHER_MAP_API_KEY not found. Please set it in your .env file or environment.\n\
+             See .env.example for the required format.",
+        )
     }
 
     async fn fetch_weather_data(
