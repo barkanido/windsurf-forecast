@@ -55,6 +55,10 @@ pub struct Args {
     #[arg(long, conflicts_with = "timezone")]
     pub pick_timezone: bool,
 
+    /// List all available weather providers and exit
+    #[arg(long)]
+    pub list_providers: bool,
+
     /// Path to custom config file (default: ~/.windsurf-config.toml)
     #[arg(long, value_name = "PATH")]
     pub config: Option<PathBuf>,

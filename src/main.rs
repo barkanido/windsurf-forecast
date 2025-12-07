@@ -121,6 +121,18 @@ async fn run() -> Result<()> {
     // Parse command line arguments
     let args = Args::parse();
 
+    // Handle --list-providers flag
+    if args.list_providers {
+        println!("Available weather providers:\n");
+        for (name, description) in provider_registry::all_provider_descriptions() {
+            let metadata = provider_registry::get_provider_metadata(name).unwrap();
+            println!("  {} - {}", name, description);
+            println!("    API Key: {}", metadata.api_key_var);
+            println!();
+        }
+        return Ok(());
+    }
+
     // Handle interactive timezone picker
     if args.pick_timezone {
         let selected_tz = pick_timezone_interactive()?;
