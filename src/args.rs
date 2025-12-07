@@ -22,8 +22,12 @@ use std::path::PathBuf;
     stromglass-windsurf-forecast --days-ahead 5 --first-day-offset 1\n\n  \
     # Use a specific timezone\n  \
     stromglass-windsurf-forecast --timezone America/New_York\n\n  \
+    # Use system/local timezone\n  \
+    stromglass-windsurf-forecast --timezone LOCAL\n\n  \
     # Pick timezone interactively\n  \
     stromglass-windsurf-forecast --pick-timezone\n\n  \
+    # Specify custom coordinates\n  \
+    stromglass-windsurf-forecast --lat 40.7128 --lng -74.0060\n\n  \
     # Use custom config file\n  \
     stromglass-windsurf-forecast --config /path/to/config.toml\n\n\
     Note: days-ahead + first-day-offset must not exceed 7 to ensure reliable forecasts."
@@ -46,8 +50,8 @@ pub struct Args {
     )]
     pub provider: String,
 
-    /// Timezone for displaying timestamps (e.g., "UTC", "America/New_York", "Asia/Jerusalem")
-    /// Overrides timezone from config file
+    /// Timezone for displaying timestamps (e.g., "UTC", "LOCAL", "America/New_York", "Asia/Jerusalem")
+    /// Use "LOCAL" to automatically detect system timezone. Overrides timezone from config file and is persisted.
     #[arg(long, short = 'z', value_name = "TIMEZONE")]
     pub timezone: Option<String>,
 
@@ -62,6 +66,14 @@ pub struct Args {
     /// Path to custom config file (default: ~/.windsurf-config.toml)
     #[arg(long, value_name = "PATH")]
     pub config: Option<PathBuf>,
+
+    /// Latitude for the forecast location
+    #[arg(long, value_name = "LAT")]
+    pub lat: Option<f64>,
+
+    /// Longitude for the forecast location
+    #[arg(long, value_name = "LNG")]
+    pub lng: Option<f64>,
 }
 
 // ============================================================================

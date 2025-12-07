@@ -45,13 +45,13 @@ All [`WeatherDataPoint`](../../src/forecast_provider.rs:19) timestamps use custo
 - Other code uses `std::env::var()` after `dotenv::dotenv().ok()` in main
 - Env var name is `OPEN_WEATHER_MAP_API_KEY` (underscores, not `OPENWEATHERMAP_API_KEY`)
 
-## Hard-coded Coordinates
+## Location Configuration
 
-Location coordinates are hard-coded in [`main.rs:155`](../../src/main.rs:155) - not configurable via CLI:
-```rust
-let lat = 32.486722;
-let lng = 34.888722;
-```
+Location coordinates are configured via CLI arguments (`--lat`, `--lng`) or config file:
+- No default coordinates - must be provided by user
+- Config file path: `~/.windsurf-config.toml` (or custom via `--config`)
+- Precedence: CLI arguments > Config file
+- Application will error with helpful message if coordinates are not provided
 
 ## Date Range Business Rule
 

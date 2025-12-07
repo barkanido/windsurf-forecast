@@ -20,3 +20,4 @@ dialoguer = { version = "0.11", features = ["fuzzy-select"] }
 dirs = "5.0"
 tzf-rs = "0.4"
 inventory = "0.3"
+iana-time-zone = "0.1"

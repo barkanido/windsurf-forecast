@@ -9,8 +9,10 @@ This application uses a modular provider architecture, allowing easy integration
 - Fetches weather forecast data from multiple weather API providers
 - Supports configurable forecast periods (1-7 days ahead)
 - Converts wind speeds from m/s to knots
-- Configurable timezone support with interactive picker
+- Configurable timezone support with "LOCAL" option and interactive picker
+- Timezone settings are automatically persisted to config file
 - Validates timezone against location coordinates
+- Configurable location coordinates via CLI or config file
 - Outputs formatted JSON with metadata and unit descriptions
 - Comprehensive error handling with user-friendly messages
 - Command-line interface with validation
@@ -75,10 +77,14 @@ The application supports configurable timezones for displaying forecast timestam
 
 1. **Command Line Flag**:
    ```bash
+   # Use a specific timezone
    cargo run --release -- --timezone America/New_York
    # Or use short form:
    cargo run --release -- -z America/New_York
+   # Use system/local timezone
+   cargo run --release -- -z LOCAL
    ```
+   When you specify a timezone via CLI, it's automatically saved to your config file for future use.
 
 2. **Interactive Picker** (Recommended for first-time setup):
    ```bash
@@ -92,6 +98,8 @@ The application supports configurable timezones for displaying forecast timestam
    [general]
    timezone = "America/New_York"
    default_provider = "stormglass"
+   lat = 32.486722
+   lng = 34.888722
    ```
 
 4. **Custom Config Location**:
@@ -123,8 +131,10 @@ Or run the compiled binary directly:
 - `--days-ahead <N>`: Number of days to forecast ahead (1-7, default: 4)
 - `--first-day-offset <N>`: Number of days to offset the start date (0-7, default: 0 for today)
 - `--provider <PROVIDER>`: Weather forecast provider to use (default: "stormglass")
-- `--timezone <TIMEZONE>`, `-z <TIMEZONE>`: Timezone for displaying timestamps (overrides config file)
+- `--timezone <TIMEZONE>`, `-z <TIMEZONE>`: Timezone for displaying timestamps (use "LOCAL" for system timezone, overrides and persists to config file)
 - `--pick-timezone`: Launch interactive timezone picker and save to config
+- `--lat <LAT>`: Latitude for the forecast location
+- `--lng <LNG>`: Longitude for the forecast location
 - `--config <PATH>`: Path to custom config file (default: ~/.windsurf-config.toml)
 - `--list-providers`: List all available weather providers and exit
 - `--help`: Display help information
@@ -148,13 +158,19 @@ cargo run --release -- --days-ahead 3
 # Explicitly specify the provider
 cargo run --release -- --provider openweathermap --days-ahead 2
 
-# Use a specific timezone (command line)
+# Use a specific timezone (saves to config file)
 cargo run --release -- --timezone America/New_York
 # Or use short form
 cargo run --release -- -z America/New_York
 
+# Use system/local timezone (saves to config file)
+cargo run --release -- -z LOCAL
+
 # Pick timezone interactively (saves to config file)
 cargo run --release -- --pick-timezone
+
+# Specify custom coordinates
+cargo run --release -- --lat 40.7128 --lng -74.0060
 
 # Get 2-day forecast starting 3 days from now
 cargo run --release -- --days-ahead 2 --first-day-offset 3
@@ -199,12 +215,21 @@ The application fetches the following weather parameters from Storm Glass:
 
 ## Location
 
-The application is configured for coordinates:
-- Latitude: 32.486722°N
-- Longitude: 34.888722°E
-- (32°29'12.2"N 34°53'19.4"E)
+Location coordinates must be provided either via command-line arguments or config file:
 
-To change the location, modify the `lat` and `lng` variables in `src/main.rs`.
+**Via Command Line:**
+```bash
+cargo run --release -- --lat 32.486722 --lng 34.888722
+```
+
+**Via Config File** (`~/.windsurf-config.toml`):
+```toml
+[general]
+lat = 32.486722
+lng = 34.888722
+```
+
+Coordinates are validated against the configured timezone to detect potential mismatches.
 
 ## Architecture
 
@@ -221,6 +246,7 @@ See [ADDING_PROVIDERS.md](ADDING_PROVIDERS.md) for detailed instructions on addi
 - `tokio` - Async runtime
 - `serde` & `serde_json` - JSON serialization/deserialization
 - `chrono` & `chrono-tz` - Date/time handling and timezone conversion
+- `iana-time-zone` - System timezone detection for "LOCAL" option
 - `clap` - Command-line argument parsing
 - `dotenv` - Environment variable loading from .env file
 - `anyhow` & `thiserror` - Error handling

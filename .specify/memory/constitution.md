@@ -43,7 +43,7 @@ All timestamps MUST follow explicit conversion in the transform layer:
 - **Parsed as UTC**: API responses parsed as [`UtcTimestamp`](../../src/forecast_provider.rs:16) newtype wrapper
 - **Converted in Transform Layer**: Providers explicitly call [`convert_timezone(utc, target_tz)`](../../src/forecast_provider.rs:79) to create [`LocalTimestamp`](../../src/forecast_provider.rs:44)
 - **Type Safety**: Compiler enforces correct timezone handling - cannot mix `UtcTimestamp` and `LocalTimestamp` types
-- **User Configuration**: Target timezone set via `--timezone` (or `-z`) CLI flag, defaults to UTC with warning
+- **User Configuration**: Target timezone set via `--timezone` (or `-z`) CLI flag, supports "LOCAL" for system timezone detection, persisted to config file, defaults to UTC with warning
 - **No Thread-Local State**: Timezone conversion is explicit in provider code, not hidden in serialization layer
 - **Output Format**: JSON timestamps formatted as "YYYY-MM-DD HH:MM" (not ISO 8601) in user-specified timezone
 
@@ -61,14 +61,16 @@ WeatherDataPoint { time: local, ... }
 
 **Rationale**: Explicit timezone conversion in the transform layer makes the conversion point visible and testable in provider code. Type safety prevents timezone bugs at compile time. Removing thread-local state eliminates concurrency issues and makes the code easier to reason about. User-configurable timezones support diverse geographic locations while maintaining a clear default.
 
-### IV. Hard-Coded Configuration
+### IV. Configuration Management
 
-Location coordinates and certain business rules MUST remain hard-coded:
-- Latitude: 32.486722, Longitude: 34.888722 (defined in [`main.rs:155`](../../src/main.rs:155))
-- Date range constraint: `days_ahead + first_day_offset ≤ 7` (enforced in [`args.rs:64`](../../src/args.rs:64))
-- These are INTENTIONAL business decisions, not technical limitations
+Location coordinates and business rules configuration:
+- **Coordinates**: Must be provided via CLI arguments (`--lat`, `--lng`) or config file - no defaults
+- **Config File**: `~/.windsurf-config.toml` stores user preferences (timezone, coordinates, provider)
+- **Precedence**: CLI arguments override config file values
+- **Persistence**: CLI-specified timezone is automatically saved to config file for future use
+- **Date Range Constraint**: `days_ahead + first_day_offset ≤ 7` (enforced in [`args.rs:64`](../../src/args.rs:64)) - business rule for reliable forecasts
 
-**Rationale**: This application is purpose-built for a specific location and forecast reliability window. Making these configurable would introduce complexity without delivering value for the intended use case.
+**Rationale**: Configurable coordinates support multiple locations while config file persistence reduces repetitive CLI arguments. The date range constraint remains a business rule reflecting forecast reliability requirements, not an API limitation.
 
 ### V. Error Transparency
 
@@ -199,6 +201,7 @@ All code changes MUST verify:
 - Provider architecture pattern maintained
 - Unit documentation present for new measurements
 - Timezone handling follows explicit conversion in transform layer principle
+- Coordinates provided via CLI or config (no hard-coded defaults)
 - Type safety enforced via `UtcTimestamp` and `LocalTimestamp` wrappers
 - Error messages are actionable
 - Testing workflow followed (check → build → clippy → release)

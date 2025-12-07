@@ -154,11 +154,39 @@ async fn run() -> Result<()> {
         return Ok(());
     }
 
-    // Load timezone configuration with precedence: CLI > ENV > default UTC
-    let timezone_config = TimezoneConfig::load_with_precedence(args.timezone.clone())?;
+    // Load configuration file
+    let mut config = load_config(args.config.as_ref())?;
+    
+    // Determine timezone source for display
+    let timezone_source = if args.timezone.is_some() {
+        "CLI argument"
+    } else if config.general.timezone != "UTC" {
+        "config file"
+    } else {
+        "default"
+    };
+
+    // Load timezone configuration with precedence: CLI > Config > default UTC
+    let timezone_config = TimezoneConfig::load_with_precedence(
+        args.timezone.clone(),
+        Some(config.general.timezone.clone())
+    )?;
     timezone_config.display_default_warning();
     
     let timezone = timezone_config.timezone;
+    
+    // If timezone was specified via CLI, persist it to config
+    if let Some(ref tz_str) = args.timezone {
+        config.general.timezone = tz_str.clone();
+        save_config(&config, args.config.as_ref())?;
+        
+        let config_path = if let Some(ref path) = args.config {
+            path.display().to_string()
+        } else {
+            config::get_default_config_path()?.display().to_string()
+        };
+        eprintln!("✓ Timezone '{}' saved to config file: {}", tz_str, config_path);
+    }
 
     // Validate all arguments
     validate_args(&args)?;
@@ -180,9 +208,42 @@ async fn run() -> Result<()> {
         .unwrap();
     let end = Utc.from_utc_datetime(&end);
 
-    // Coordinates for the location (32°29'12.2"N 34°53'19.4"E)
-    let lat = 32.486722;
-    let lng = 34.888722;
+    // Get coordinates from CLI args or config file
+    let lat = args.lat
+        .or(config.general.lat)
+        .ok_or_else(|| anyhow::anyhow!(
+            "Latitude not specified. Provide via --lat argument or configure in config file."
+        ))?;
+    let lng = args.lng
+        .or(config.general.lng)
+        .ok_or_else(|| anyhow::anyhow!(
+            "Longitude not specified. Provide via --lng argument or configure in config file."
+        ))?;
+    
+    // Determine coordinate source for display
+    let coord_source = if args.lat.is_some() && args.lng.is_some() {
+        "CLI arguments"
+    } else if args.lat.is_some() || args.lng.is_some() {
+        "mixed (CLI and config)"
+    } else {
+        "config file"
+    };
+
+    // Display all arguments and their origins
+    eprintln!("\n📋 Configuration:");
+    eprintln!("   Provider: {} (CLI argument)", args.provider);
+    eprintln!("   Days ahead: {} (CLI argument)", args.days_ahead);
+    eprintln!("   First day offset: {} (CLI argument)", args.first_day_offset);
+    eprintln!("   Timezone: {} ({})", timezone.name(), timezone_source);
+    eprintln!("   Coordinates: ({:.6}, {:.6}) ({})", lat, lng, coord_source);
+    
+    let config_path_display = if let Some(ref path) = args.config {
+        path.display().to_string()
+    } else {
+        config::get_default_config_path()?.display().to_string()
+    };
+    eprintln!("   Config file: {}", config_path_display);
+    eprintln!();
 
     // Validate timezone against coordinates
     validate_timezone_coordinates(timezone, lat, lng);

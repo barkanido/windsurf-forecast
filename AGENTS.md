@@ -58,7 +58,7 @@ cargo run --release
 
 - **Transform Layer**: Providers parse UTC timestamps as [`UtcTimestamp`](src/forecast_provider.rs:16) and explicitly convert to [`LocalTimestamp`](src/forecast_provider.rs:44) using [`convert_timezone()`](src/forecast_provider.rs:79)
 - **Type Safety**: Compiler enforces correct timezone handling - cannot mix `UtcTimestamp` and `LocalTimestamp`
-- **User Configuration**: Target timezone set via `--timezone` (or `-z`) CLI flag, defaults to UTC with warning
+- **User Configuration**: Target timezone set via `--timezone` (or `-z`) CLI flag, supports "LOCAL" for system timezone, defaults to UTC with warning, persisted to config file
 - **No Thread-Local State**: Timezone conversion is explicit in provider code, not hidden in serialization
 - **Output Format**: JSON timestamps formatted as "YYYY-MM-DD HH:MM" in user-specified timezone
 
@@ -99,9 +99,11 @@ inventory::submit! {
 }
 ```
 
-### Hard-coded Location
-- Coordinates are hard-coded in [`main.rs`](src/main.rs:155): `lat = 32.486722, lng = 34.888722`
-- Location: 32°29'12.2"N 34°53'19.4"E (not configurable via CLI)
+### Location Configuration
+- Coordinates are configured via CLI arguments (`--lat`, `--lng`) or config file
+- No default coordinates - must be provided by user
+- Config file path: `~/.windsurf-config.toml` (or custom via `--config`)
+- Precedence: CLI arguments > Config file
 
 ### Date Range Constraint
 - `days_ahead + first_day_offset` must NOT exceed 7 (enforced in [`args.rs`](src/args.rs:64))

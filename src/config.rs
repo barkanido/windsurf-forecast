@@ -5,6 +5,25 @@ use std::fs;
 use std::path::PathBuf;
 
 // ============================================================================
+// System Timezone Detection
+// ============================================================================
+
+/// Detect the local system timezone
+pub fn detect_system_timezone() -> Result<Tz> {
+    // Try to get timezone from system
+    let tz_name = iana_time_zone::get_timezone()
+        .context("Failed to detect system timezone")?;
+    
+    let tz = tz_name.parse::<Tz>()
+        .map_err(|_| anyhow!(
+            "System timezone '{}' is not a valid IANA timezone identifier",
+            tz_name
+        ))?;
+    
+    Ok(tz)
+}
+
+// ============================================================================
 // Timezone Configuration
 // ============================================================================
 
@@ -42,13 +61,21 @@ impl TimezoneConfig {
     }
     
     /// Parse timezone from string identifier
+    /// Special value "LOCAL" detects system timezone automatically
     fn from_string(s: &str) -> Result<Self> {
+        // Handle special "LOCAL" value (case-sensitive)
+        if s == "LOCAL" {
+            let tz = detect_system_timezone()?;
+            return Ok(Self::explicit(tz));
+        }
+        
         let tz = s.parse::<Tz>()
             .map_err(|_| anyhow!(
                 "Invalid timezone identifier: '{}'\n\
                  \n\
                  Examples of valid identifiers:\n\
                  - UTC\n\
+                 - LOCAL (use system timezone)\n\
                  - America/New_York\n\
                  - America/Los_Angeles\n\
                  - Europe/London\n\
@@ -68,14 +95,23 @@ impl TimezoneConfig {
     ///
     /// Precedence (highest to lowest):
     /// 1. CLI argument (if provided)
-    /// 2. Default to UTC with warning
-    pub fn load_with_precedence(cli_tz: Option<String>) -> Result<Self> {
+    /// 2. Config file timezone
+    /// 3. Default to UTC with warning
+    pub fn load_with_precedence(cli_tz: Option<String>, config_tz: Option<String>) -> Result<Self> {
         // 1. Try CLI argument
         if let Some(tz_str) = cli_tz {
             return Self::from_string(&tz_str);
         }
         
-        // 2. Default to UTC (will trigger warning)
+        // 2. Try config file timezone
+        if let Some(tz_str) = config_tz {
+            // Only use config if it's not the default "UTC"
+            if tz_str != "UTC" {
+                return Self::from_string(&tz_str);
+            }
+        }
+        
+        // 3. Default to UTC (will trigger warning)
         Ok(Self::default_utc())
     }
     
@@ -113,6 +149,14 @@ pub struct GeneralConfig {
     /// Default weather provider
     #[serde(default = "default_provider")]
     pub default_provider: String,
+    
+    /// Latitude for forecast location (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lat: Option<f64>,
+    
+    /// Longitude for forecast location (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lng: Option<f64>,
 }
 
 // ============================================================================
@@ -132,6 +176,8 @@ impl Default for GeneralConfig {
         Self {
             timezone: default_timezone(),
             default_provider: default_provider(),
+            lat: None,
+            lng: None,
         }
     }
 }
