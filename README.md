@@ -6,10 +6,11 @@ This application uses a modular provider architecture, allowing easy integration
 
 ## Features
 
-- Fetches weather forecast data from Storm Glass API
+- Fetches weather forecast data from multiple weather API providers
 - Supports configurable forecast periods (1-7 days ahead)
 - Converts wind speeds from m/s to knots
-- Converts timestamps from UTC to Asia/Jerusalem timezone
+- Configurable timezone support with interactive picker
+- Validates timezone against location coordinates
 - Outputs formatted JSON with metadata and unit descriptions
 - Comprehensive error handling with user-friendly messages
 - Command-line interface with validation
@@ -27,42 +28,79 @@ cargo build --release
 
 The compiled binary will be available at `target/release/stromglass-windsurf-forecast` (or `.exe` on Windows).
 
-## Configuration
+## Development
 
-The application requires an API key for your chosen weather provider. By default, it uses Storm Glass API.
+### Testing Workflow
+
+When making code changes, follow this iterative workflow:
+
+1. **Check compilation**: `cargo check` - Fix all errors and warnings
+2. **Build debug**: `cargo build` - Fast builds for testing (don't use `--release` during development)
+3. **Run linter**: `cargo clippy` - Address all warnings (fix immediately or add to TODO)
+4. **Test changes**: `cargo run -- --provider stormglass --days-ahead 3`
+5. **Final validation**: `cargo run --release` - Only for end-to-end testing before deployment
+
+See [AGENTS.md](AGENTS.md) for detailed testing commands and workflows.
+
+## Configuration
 
 ### API Keys
 
 Each provider requires its own API key as an environment variable:
 - **Storm Glass**: `STORMGLASS_API_KEY`
+- **OpenWeatherMap**: `OPEN_WEATHER_MAP_API_KEY`
 - For other providers, see [ADDING_PROVIDERS.md](ADDING_PROVIDERS.md)
-
-### Option 1: Using .env file (Recommended)
 
 Create a `.env` file in the project root:
 
 ```bash
 STORMGLASS_API_KEY=your-api-key-here
+OPEN_WEATHER_MAP_API_KEY=your-api-key-here
 ```
 
 A `.env.example` template file is provided as a reference.
 
-### Option 2: Set environment variable directly
-
-Set the environment variable in your shell:
-
-```bash
-# Windows (Command Prompt)
-set STORMGLASS_API_KEY=your-api-key-here
-
-# Windows (PowerShell)
-$env:STORMGLASS_API_KEY="your-api-key-here"
-
-# Linux/macOS
-export STORMGLASS_API_KEY=your-api-key-here
-```
-
 **Note:** The `.env` file is automatically ignored by git to keep your API key secure.
+
+### Timezone Configuration
+
+The application supports configurable timezones for displaying forecast timestamps.
+
+**Default Behavior:**
+- Default timezone is UTC
+- A warning is displayed when using the default UTC timezone
+- Timezone is saved to `~/.windsurf-config.toml` for future use
+
+**Setting Timezone:**
+
+1. **Interactive Picker** (Recommended for first-time setup):
+   ```bash
+   cargo run --release -- --pick-timezone
+   ```
+   This launches a searchable, filterable list of all IANA timezones.
+
+2. **Direct Specification**:
+   ```bash
+   cargo run --release -- --timezone America/New_York
+   ```
+
+3. **Manual Config File**:
+   Edit `~/.windsurf-config.toml`:
+   ```toml
+   [general]
+   timezone = "America/New_York"
+   default_provider = "stormglass"
+   ```
+
+4. **Custom Config Location**:
+   ```bash
+   cargo run --release -- --config /path/to/config.toml
+   ```
+
+**Timezone Validation:**
+- The app validates that the configured timezone matches the location coordinates
+- If a mismatch is detected, a warning is displayed
+- Use standard IANA timezone names (e.g., "UTC", "America/New_York", "Asia/Jerusalem", "Europe/London")
 
 ## Usage
 
@@ -83,10 +121,14 @@ Or run the compiled binary directly:
 - `--days-ahead <N>`: Number of days to forecast ahead (1-7, default: 4)
 - `--first-day-offset <N>`: Number of days to offset the start date (0-7, default: 0 for today)
 - `--provider <PROVIDER>`: Weather forecast provider to use (default: "stormglass")
+- `--timezone <TIMEZONE>`: Timezone for displaying timestamps (overrides config file)
+- `--pick-timezone`: Launch interactive timezone picker and save to config
+- `--config <PATH>`: Path to custom config file (default: ~/.windsurf-config.toml)
 - `--help`: Display help information
 
 **Available Providers:**
 - `stormglass` - Storm Glass API (default)
+- `openweathermap` - OpenWeatherMap API
 - To add more providers, see [ADDING_PROVIDERS.md](ADDING_PROVIDERS.md)
 
 **Important:** The sum of `--days-ahead` and `--first-day-offset` must not exceed 7 to ensure reliable forecasts.
@@ -101,13 +143,22 @@ cargo run --release
 cargo run --release -- --days-ahead 3
 
 # Explicitly specify the provider
-cargo run --release -- --provider stormglass --days-ahead 2
+cargo run --release -- --provider openweathermap --days-ahead 2
+
+# Use a specific timezone
+cargo run --release -- --timezone America/New_York
+
+# Pick timezone interactively (first-time setup)
+cargo run --release -- --pick-timezone
 
 # Get 2-day forecast starting 3 days from now
 cargo run --release -- --days-ahead 2 --first-day-offset 3
 
-# Get 5-day forecast starting tomorrow
-cargo run --release -- --days-ahead 5 --first-day-offset 1
+# Get 5-day forecast starting tomorrow with timezone
+cargo run --release -- --days-ahead 5 --first-day-offset 1 --timezone Europe/London
+
+# Use custom config file location
+cargo run --release -- --config ./my-config.toml
 
 # Get help and see all options
 cargo run --release -- --help
@@ -125,8 +176,8 @@ The output includes:
 - Wind speed and gust in knots (converted from m/s)
 - Swell height (meters), period (seconds), and direction (degrees)
 - Wind direction (degrees)
-- Timestamps in Asia/Jerusalem timezone
-- Metadata including API quota usage and unit descriptions
+- Timestamps in configured timezone (default: UTC)
+- Metadata including provider information and unit descriptions
 
 ## Weather Parameters
 

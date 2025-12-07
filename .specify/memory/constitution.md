@@ -1,14 +1,16 @@
 <!--
 Sync Impact Report:
-Version: 1.0.0 (Initial Constitution)
-Modified Principles: N/A (Initial creation)
-Added Sections: All sections (Core Principles, Architecture Standards, Development Workflow, Governance)
+Version: 1.0.0 → 1.1.0 (Added Testing Workflow Principle)
+Modified Principles: None (existing principles unchanged)
+Added Sections: VI. Testing Workflow (new principle in Core Principles)
 Removed Sections: None
 Templates Status:
-  ✅ plan-template.md - Aligned with Provider Architecture principle
-  ✅ spec-template.md - Compatible with user story structure
-  ✅ tasks-template.md - Supports provider extension workflow
-Follow-up TODOs: None
+  ✅ plan-template.md - Already aligned with cargo workflow
+  ✅ spec-template.md - Compatible with testing requirements
+  ✅ tasks-template.md - Supports iterative testing approach
+  ⚠ AGENTS.md - REQUIRES UPDATE with new cargo testing commands
+  ⚠ README.md - May need testing section clarification
+Follow-up TODOs: Update AGENTS.md Build & Run Commands section with detailed testing workflow
 -->
 
 # Weather Forecast Application Constitution
@@ -63,6 +65,32 @@ Error handling MUST provide actionable information:
 - Error messages MUST guide users toward resolution (e.g., "Set STORMGLASS_API_KEY in .env")
 
 **Rationale**: Weather APIs have various failure modes (quota limits, authentication, service outages). Clear error messages reduce debugging time and improve user experience.
+
+### VI. Testing Workflow
+
+All code changes MUST follow an iterative testing workflow before final validation:
+
+1. **`cargo check`** - MUST pass without errors or warnings
+   - Fix all compilation errors immediately
+   - Address warnings seriously; fix if they indicate real issues at current implementation stage
+   - Some warnings may be deferred if they relate to incomplete features
+
+2. **`cargo build`** - MUST succeed for development testing
+   - DO NOT use `--release` flag during development (it is slow)
+   - Use debug builds for rapid iteration and testing
+
+3. **`cargo clippy`** - MUST be run and addressed
+   - Treat clippy warnings as items requiring action
+   - Either fix warnings immediately if straightforward
+   - Or add to TODO task list for later resolution if complex
+   - Document rationale if intentionally ignoring specific clippy suggestions
+
+4. **`cargo run --release`** - ONLY for final end-to-end testing
+   - Use `--release` flag exclusively for production-like validation
+   - Run after all development testing passes
+   - Validate complete user workflows before deployment
+
+**Rationale**: This workflow balances development speed with code quality. Debug builds enable rapid iteration, while strict quality gates (check, clippy) catch issues early. The `--release` flag's optimization overhead is reserved for final validation, preventing slow feedback loops during active development.
 
 ## Architecture Standards
 
@@ -149,6 +177,7 @@ Deviations from simplicity MUST be justified:
 - Hard-coded location → Single-purpose application scope
 - Timezone conversion in serialization → User experience priority
 - Three-location provider registration → Rust trait system constraints
+- Testing workflow structure → Balance development speed with code quality
 
 ### Compliance Review
 
@@ -157,6 +186,7 @@ All code changes MUST verify:
 - Unit documentation present for new measurements
 - Timezone handling follows standardization principle
 - Error messages are actionable
+- Testing workflow followed (check → build → clippy → release)
 - [`AGENTS.md`](../../AGENTS.md:1) updated for non-obvious patterns
 
-**Version**: 1.0.0 | **Ratified**: 2025-12-07 | **Last Amended**: 2025-12-07
+**Version**: 1.1.0 | **Ratified**: 2025-12-07 | **Last Amended**: 2025-12-07

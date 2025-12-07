@@ -38,6 +38,7 @@ Verify compliance with constitution principles from `.specify/memory/constitutio
 - [ ] **Timezone Standardization**: Timestamps use UTC internally, convert to Asia/Jerusalem for output via custom serializer
 - [ ] **Hard-Coded Configuration**: Location coordinates remain at 32.486722, 34.888722; date range constraint ≤ 7 days enforced
 - [ ] **Error Transparency**: Error messages are actionable and guide users to resolution
+- [ ] **Testing Workflow**: Code changes follow iterative workflow (cargo check → build → clippy → run, with --release only for final validation)
 - [ ] **Provider Extension Protocol**: If adding provider, all 7 registration steps completed (see ADDING_PROVIDERS.md)
 - [ ] **CLI-First Development**: All functionality exposed via command-line interface with `--help` support
 - [ ] **Configuration Management**: Environment variables managed via .env file; unique var names per provider

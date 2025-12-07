@@ -4,15 +4,46 @@ This file provides guidance to agents when working with code in this repository.
 
 ## Build & Run Commands
 
+### Development Testing Workflow (Constitution VI)
+
+Follow this sequence for all code changes:
+
 ```bash
-# Build release binary
+# 1. Check compilation (fix errors and warnings)
+cargo check
+
+# 2. Build for testing (DO NOT use --release during development)
+cargo build
+
+# 3. Run clippy (address all warnings - fix now or add to TODO)
+cargo clippy
+
+# 4. Test the application (debug build for fast iteration)
+cargo run -- --provider stormglass --days-ahead 3
+cargo run -- --provider openweathermap --days-ahead 2
+```
+
+### Production Testing (Final Validation Only)
+
+```bash
+# Use --release ONLY for final end-to-end testing
 cargo build --release
-
-# Run with default provider (stormglass)
-cargo run --release
-
-# Run with specific provider
+cargo run --release -- --provider stormglass
 cargo run --release -- --provider openweathermap --days-ahead 3
+```
+
+### Quick Reference
+
+```bash
+# Most common development commands
+cargo check          # Fast compile check
+cargo build          # Debug build (fast)
+cargo clippy         # Linting
+cargo run            # Run debug build
+
+# Production commands (slow, use sparingly)
+cargo build --release
+cargo run --release
 ```
 
 ## Critical Non-Obvious Patterns

@@ -77,6 +77,13 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T008 Implement timezone conversion serializer (UTC → Asia/Jerusalem)
 - [ ] T009 Setup error handling with anyhow::Result and thiserror
 
+**Testing Workflow** (Constitution VI - apply for ALL code changes):
+- Run `cargo check` to verify compilation (fix errors and warnings)
+- Run `cargo build` for debug builds (DO NOT use --release during development)
+- Run `cargo clippy` and address warnings (fix now or add to TODO)
+- Test with `cargo run -- [args]` using debug build
+- Use `cargo run --release` ONLY for final end-to-end validation
+
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
 ---
