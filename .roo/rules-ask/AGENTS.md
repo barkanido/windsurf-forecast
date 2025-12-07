@@ -14,8 +14,11 @@ This is counterintuitive - most systems use a registry pattern.
 When explaining output data:
 - Wind speeds from StormGlass provider are in **knots** (converted via `MS_TO_KNOTS = 1.94384`)
 - Wind speeds from OpenWeatherMap provider are in **m/s** (no conversion)
-- The [`create_units_map()`](../../src/main.rs:52) in main.rs always claims "knots" regardless of provider
-- This is misleading documentation in the metadata
+- The [`create_units_map()`](../../src/main.rs:45) now correctly reports units based on provider:
+  - StormGlass metadata: "knots"
+  - OpenWeatherMap metadata: "m/s"
+  - Unknown providers: Default to "m/s"
+- Metadata now accurately reflects actual data units
 
 ## Timezone Conversion Is Hidden in Serialization
 

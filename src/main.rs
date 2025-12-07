@@ -42,19 +42,26 @@ struct TransformedWeatherResponse {
 // Transformation Functions
 // ============================================================================
 
-fn create_units_map() -> HashMap<String, String> {
+fn create_units_map(provider_name: &str) -> HashMap<String, String> {
+    // Determine wind speed units based on provider
+    let wind_unit = match provider_name {
+        "stormglass" => "knots",
+        "openweathermap" => "m/s",
+        _ => "m/s", // Default to m/s for unknown providers
+    };
+    
     [
-        ("windSpeed", "Speed of wind at 10m above ground in knots"),
-        ("gust", "Wind gust in knots"),
-        ("airTemperature", "Air temperature in degrees celsius"),
-        ("swellHeight", "Height of swell waves in meters"),
-        ("swellPeriod", "Period of swell waves in seconds"),
-        ("swellDirection", "Direction of swell waves. 0° indicates swell coming from north"),
-        ("waterTemperature", "Water temperature in degrees celsius"),
-        ("windDirection", "Direction of wind at 10m above ground. 0° indicates wind coming from north"),
+        ("windSpeed", format!("Speed of wind at 10m above ground in {}", wind_unit)),
+        ("gust", format!("Wind gust in {}", wind_unit)),
+        ("airTemperature", "Air temperature in degrees celsius".to_string()),
+        ("swellHeight", "Height of swell waves in meters".to_string()),
+        ("swellPeriod", "Period of swell waves in seconds".to_string()),
+        ("swellDirection", "Direction of swell waves. 0° indicates swell coming from north".to_string()),
+        ("waterTemperature", "Water temperature in degrees celsius".to_string()),
+        ("windDirection", "Direction of wind at 10m above ground. 0° indicates wind coming from north".to_string()),
     ]
     .iter()
-    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .map(|(k, v)| (k.to_string(), v.clone()))
     .collect()
 }
 
@@ -76,7 +83,7 @@ fn create_meta(
         end: end.to_rfc3339(),
         report_generated_at: report_time,
         provider: provider_name.to_string(),
-        units: create_units_map(),
+        units: create_units_map(provider_name),
     }
 }
 

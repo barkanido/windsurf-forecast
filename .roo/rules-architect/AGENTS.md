@@ -17,9 +17,14 @@ This violates DRY and makes adding providers error-prone. A registry pattern wou
 
 This mixed-layer approach means unit handling is inconsistent across the architecture.
 
-## Metadata Lies About Units
+## Metadata Now Provider-Specific
 
-[`create_units_map()`](../../src/main.rs:52) always claims wind speeds are in "knots", but OpenWeatherMap provider returns m/s. The metadata doesn't reflect actual provider behavior.
+[`create_units_map()`](../../src/main.rs:45) now accepts `provider_name` parameter and returns provider-specific units:
+- StormGlass: Reports "knots" (matches conversion in code)
+- OpenWeatherMap: Reports "m/s" (matches raw API values)
+- Unknown providers: Default to "m/s"
+
+This ensures metadata accurately reflects the actual units in the data.
 
 ## Error Handling Inconsistency
 
