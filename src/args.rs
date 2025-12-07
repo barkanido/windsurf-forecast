@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
+use std::path::PathBuf;
 
 // ============================================================================
 // CLI Arguments
@@ -18,7 +19,13 @@ use clap::Parser;
     # Get 2-day forecast starting 3 days from now\n  \
     stromglass-windsurf-forecast --days-ahead 2 --first-day-offset 3\n\n  \
     # Get 5-day forecast starting tomorrow\n  \
-    stromglass-windsurf-forecast --days-ahead 5 --first-day-offset 1\n\n\
+    stromglass-windsurf-forecast --days-ahead 5 --first-day-offset 1\n\n  \
+    # Use a specific timezone\n  \
+    stromglass-windsurf-forecast --timezone America/New_York\n\n  \
+    # Pick timezone interactively\n  \
+    stromglass-windsurf-forecast --pick-timezone\n\n  \
+    # Use custom config file\n  \
+    stromglass-windsurf-forecast --config /path/to/config.toml\n\n\
     Note: days-ahead + first-day-offset must not exceed 7 to ensure reliable forecasts."
 )]
 pub struct Args {
@@ -33,6 +40,19 @@ pub struct Args {
     /// Weather forecast provider to use
     #[arg(long, default_value = "stormglass", value_name = "PROVIDER")]
     pub provider: String,
+
+    /// Timezone for displaying timestamps (e.g., "UTC", "America/New_York", "Asia/Jerusalem")
+    /// Overrides timezone from config file
+    #[arg(long, value_name = "TIMEZONE")]
+    pub timezone: Option<String>,
+
+    /// Launch interactive timezone picker and save selection to config
+    #[arg(long, conflicts_with = "timezone")]
+    pub pick_timezone: bool,
+
+    /// Path to custom config file (default: ~/.windsurf-config.toml)
+    #[arg(long, value_name = "PATH")]
+    pub config: Option<PathBuf>,
 }
 
 // ============================================================================

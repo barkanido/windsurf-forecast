@@ -1,17 +1,19 @@
 use anyhow::Result;
 use chrono::{DateTime, TimeZone, Utc};
-use chrono_tz::Asia::Jerusalem;
+use chrono_tz::Tz;
 use clap::Parser;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fs;
 
 mod args;
+mod config;
 mod forecast_provider;
 mod providers;
 
 use args::{Args, validate_args};
-use forecast_provider::{ForecastProvider, WeatherDataPoint};
+use config::{load_config, save_config, parse_timezone, validate_timezone_coordinates, warn_if_default_timezone, pick_timezone_interactive};
+use forecast_provider::{ForecastProvider, WeatherDataPoint, set_serialization_timezone};
 use providers::{stormglass::StormGlassProvider, openweathermap::OpenWeatherMapProvider};
 
 // ============================================================================
@@ -71,8 +73,9 @@ fn create_meta(
     start: DateTime<Utc>,
     end: DateTime<Utc>,
     provider_name: &str,
+    tz: Tz,
 ) -> TransformedMetaData {
-    let now = Jerusalem.from_utc_datetime(&Utc::now().naive_utc());
+    let now = tz.from_utc_datetime(&Utc::now().naive_utc());
     let report_time = now.format("%Y-%m-%d %H:%M").to_string();
 
     TransformedMetaData {
@@ -91,6 +94,7 @@ fn create_meta(
 // ============================================================================
 
 fn write_weather_json(data: &TransformedWeatherResponse, filename: &str) -> Result<()> {
+    println!("Writing weather data to file: {}", filename);
     let json = serde_json::to_string_pretty(data)?;
     fs::write(filename, json)?;
     Ok(())
@@ -122,6 +126,64 @@ async fn run() -> Result<()> {
 
     // Parse command line arguments
     let args = Args::parse();
+
+    // Handle interactive timezone picker
+    if args.pick_timezone {
+        let selected_tz = pick_timezone_interactive()?;
+        
+        // Load existing config or create new one
+        let mut config = load_config(args.config.as_ref())?;
+        config.general.timezone = selected_tz.clone();
+        
+        // Save config
+        save_config(&config, args.config.as_ref())?;
+        
+        let config_path = if let Some(ref path) = args.config {
+            path.display().to_string()
+        } else {
+            config::get_default_config_path()?.display().to_string()
+        };
+        
+        println!("✓ Timezone '{}' saved to config file: {}", selected_tz, config_path);
+        return Ok(());
+    }
+
+    // Load configuration
+    let mut config = load_config(args.config.as_ref())?;
+
+    // Determine timezone: CLI flag > config file > default (UTC)
+    let timezone_string = if let Some(ref tz) = args.timezone {
+        // CLI flag takes precedence
+        tz.clone()
+    } else {
+        // Use config file timezone
+        config.general.timezone.clone()
+    };
+
+    // Parse and validate timezone
+    let timezone = parse_timezone(&timezone_string)?;
+
+    // Check if using default timezone without explicit configuration
+    let was_explicitly_set = args.timezone.is_some() ||
+        (config.general.timezone != "UTC" || args.config.is_some());
+    warn_if_default_timezone(&timezone_string, was_explicitly_set);
+
+    // If timezone was specified via CLI flag, save it to config
+    if args.timezone.is_some() && args.timezone.as_ref().unwrap() != &config.general.timezone {
+        config.general.timezone = timezone_string.clone();
+        save_config(&config, args.config.as_ref())?;
+        
+        let config_path = if let Some(ref path) = args.config {
+            path.display().to_string()
+        } else {
+            config::get_default_config_path()?.display().to_string()
+        };
+        
+        println!("✓ Timezone '{}' saved to config file: {}", timezone_string, config_path);
+    }
+
+    // Set timezone for serialization
+    set_serialization_timezone(timezone);
 
     // Validate all arguments
     validate_args(&args)?;
@@ -155,6 +217,9 @@ async fn run() -> Result<()> {
     let lat = 32.486722;
     let lng = 34.888722;
 
+    // Validate timezone against coordinates
+    validate_timezone_coordinates(timezone, lat, lng);
+
     // Fetch weather data using the provider
     let weather_points = provider.fetch_weather_data(start, end, lat, lng).await?;
 
@@ -162,7 +227,7 @@ async fn run() -> Result<()> {
     // WeatherDataPoint now serializes directly with proper formatting
     let transformed_data = TransformedWeatherResponse {
         hours: weather_points,
-        meta: create_meta(lat, lng, start, end, provider.name()),
+        meta: create_meta(lat, lng, start, end, provider.name(), timezone),
     };
 
     // Generate filename
@@ -176,7 +241,7 @@ async fn run() -> Result<()> {
     write_weather_json(&transformed_data, &filename)?;
     
     // Print the data
-    println!("{}", serde_json::to_string_pretty(&transformed_data)?);
+    // println!("{}", serde_json::to_string_pretty(&transformed_data)?);
     
     println!("Loaded {} hourly data points from file.", transformed_data.hours.len());
 
