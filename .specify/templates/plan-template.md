@@ -31,7 +31,18 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Verify compliance with constitution principles from `.specify/memory/constitution.md`:
+
+- [ ] **Provider Architecture Pattern**: If adding weather providers, follows trait-based architecture with ForecastProvider implementation
+- [ ] **Explicit Unit Handling**: New measurements document units clearly; unit conversions are provider-specific and documented
+- [ ] **Timezone Standardization**: Timestamps use UTC internally, convert to Asia/Jerusalem for output via custom serializer
+- [ ] **Hard-Coded Configuration**: Location coordinates remain at 32.486722, 34.888722; date range constraint ≤ 7 days enforced
+- [ ] **Error Transparency**: Error messages are actionable and guide users to resolution
+- [ ] **Provider Extension Protocol**: If adding provider, all 7 registration steps completed (see ADDING_PROVIDERS.md)
+- [ ] **CLI-First Development**: All functionality exposed via command-line interface with `--help` support
+- [ ] **Configuration Management**: Environment variables managed via .env file; unique var names per provider
+
+*Note: Check "Complexity Justification" section if any violations need justification.*
 
 ## Project Structure
 

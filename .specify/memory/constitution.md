@@ -1,0 +1,162 @@
+<!--
+Sync Impact Report:
+Version: 1.0.0 (Initial Constitution)
+Modified Principles: N/A (Initial creation)
+Added Sections: All sections (Core Principles, Architecture Standards, Development Workflow, Governance)
+Removed Sections: None
+Templates Status:
+  ✅ plan-template.md - Aligned with Provider Architecture principle
+  ✅ spec-template.md - Compatible with user story structure
+  ✅ tasks-template.md - Supports provider extension workflow
+Follow-up TODOs: None
+-->
+
+# Weather Forecast Application Constitution
+
+## Core Principles
+
+### I. Provider Architecture Pattern
+
+The application MUST use a trait-based provider architecture where:
+- Each weather API provider implements the [`ForecastProvider`](../../src/forecast_provider.rs:1) trait
+- Providers are self-contained modules in [`src/providers/`](../../src/providers/) 
+- Common data structures ([`WeatherDataPoint`](../../src/forecast_provider.rs:19)) ensure interoperability
+- Provider registration requires updates in exactly 3 locations (see [`AGENTS.md`](../../AGENTS.md:30))
+
+**Rationale**: This pattern enables easy integration of new weather APIs without modifying core application logic, supporting the project's goal of multi-provider support while maintaining code maintainability.
+
+### II. Explicit Unit Handling
+
+Wind speed and other measurements MUST have clearly documented unit conventions:
+- Each provider documents its output units in code comments
+- Unit conversions (e.g., m/s to knots) are provider-specific, not enforced globally
+- Inconsistencies between providers are INTENTIONAL and reflect upstream API design
+- Output JSON MUST include metadata describing units for all measurements
+
+**Rationale**: Different weather APIs return data in different units. Rather than force artificial consistency, we preserve provider-specific units and document them explicitly, preventing silent unit conversion bugs.
+
+### III. Timezone Standardization
+
+All timestamps MUST be:
+- Stored internally as UTC ([`DateTime<Utc>`](../../src/forecast_provider.rs:20))
+- Automatically converted to Asia/Jerusalem timezone during JSON serialization
+- Formatted as "YYYY-MM-DD HH:MM" (not ISO 8601) for output
+- Converted using the custom serializer [`serialize_time_jerusalem()`](../../src/forecast_provider.rs:7)
+
+**Rationale**: The application targets a specific geographic location (32°29'12.2"N 34°53'19.4"E). Standardizing output to local time eliminates timezone confusion for end users while maintaining UTC internally for calculations.
+
+### IV. Hard-Coded Configuration
+
+Location coordinates and certain business rules MUST remain hard-coded:
+- Latitude: 32.486722, Longitude: 34.888722 (defined in [`main.rs:155`](../../src/main.rs:155))
+- Date range constraint: `days_ahead + first_day_offset ≤ 7` (enforced in [`args.rs:64`](../../src/args.rs:64))
+- These are INTENTIONAL business decisions, not technical limitations
+
+**Rationale**: This application is purpose-built for a specific location and forecast reliability window. Making these configurable would introduce complexity without delivering value for the intended use case.
+
+### V. Error Transparency
+
+Error handling MUST provide actionable information:
+- HTTP status codes map to user-friendly messages (402 = quota exceeded, 403 = invalid key, etc.)
+- Provider-specific errors use [`thiserror`](../../src/providers/stormglass.rs:15) for structured error types
+- Application-level errors use [`anyhow::Result`](../../src/main.rs:1) for flexibility
+- Error messages MUST guide users toward resolution (e.g., "Set STORMGLASS_API_KEY in .env")
+
+**Rationale**: Weather APIs have various failure modes (quota limits, authentication, service outages). Clear error messages reduce debugging time and improve user experience.
+
+## Architecture Standards
+
+### Provider Extension Protocol
+
+When adding a new weather provider, developers MUST:
+
+1. Create provider module in [`src/providers/[name].rs`](../../src/providers/)
+2. Implement [`ForecastProvider`](../../src/forecast_provider.rs:1) trait with all required methods
+3. Register provider in [`src/providers/mod.rs`](../../src/providers/mod.rs:1)
+4. Update [`create_provider()`](../../src/main.rs:39) to instantiate the new provider
+5. Update [`run()`](../../src/main.rs:130) to retrieve the provider's API key
+6. Update [`validate_provider()`](../../src/args.rs:77) to accept the provider name
+7. Document provider-specific behavior in [`ADDING_PROVIDERS.md`](../../ADDING_PROVIDERS.md:1)
+
+Missing any of these steps will cause silent failures or runtime panics.
+
+### Dependency Management
+
+External dependencies MUST:
+- Use semantic versioning with locked patch versions in [`Cargo.toml`](../../Cargo.toml:1)
+- Enable only required features (e.g., `reqwest = { features = ["json"] }`)
+- Be justified in documentation if adding significant binary size
+- Use async-first libraries (tokio ecosystem preferred)
+
+### Field Naming Convention
+
+- Rust structs use `snake_case` for field names
+- JSON output uses `camelCase` via `#[serde(rename = "camelCase")]`
+- This maintains Rust idioms internally while providing JavaScript-friendly JSON
+
+## Development Workflow
+
+### CLI-First Development
+
+All functionality MUST be exposed via command-line interface:
+- Use [`clap`](../../src/args.rs:1) with derive macros for argument parsing
+- Validate arguments before execution (see [`validate_provider()`](../../src/args.rs:77))
+- Support `--help` with clear descriptions of all options
+- Exit codes: 0 = success, non-zero = error with stderr message
+
+### Configuration Management
+
+Environment variables MUST be managed via:
+- `.env` file support using [`dotenv`](../../Cargo.toml:14) crate
+- `.env.example` template provided for reference
+- `.env` in `.gitignore` to prevent API key exposure
+- Each provider uses a uniquely named environment variable (e.g., `STORMGLASS_API_KEY`, `OPEN_WEATHER_MAP_API_KEY`)
+
+### Documentation Standards
+
+Code documentation MUST include:
+- Provider-specific behavior in inline comments
+- Non-obvious patterns documented in [`AGENTS.md`](../../AGENTS.md:1)
+- User-facing instructions in [`README.md`](../../README.md:1)
+- Provider extension guide in [`ADDING_PROVIDERS.md`](../../ADDING_PROVIDERS.md:1)
+- Clickable file references using relative paths in markdown
+
+## Governance
+
+### Constitution Authority
+
+This constitution supersedes coding preferences, style debates, and undocumented conventions. When conflicts arise:
+
+1. Constitution principles take precedence
+2. Documented architectural patterns in [`AGENTS.md`](../../AGENTS.md:1) clarify implementation
+3. Ambiguities require constitution amendment, not ad-hoc decisions
+
+### Amendment Process
+
+Constitution changes require:
+1. Documented rationale for the change
+2. Version bump according to semantic versioning:
+   - **MAJOR**: Backward-incompatible principle removal or redefinition
+   - **MINOR**: New principle or materially expanded guidance
+   - **PATCH**: Clarifications, wording fixes, non-semantic refinements
+3. Review of dependent templates (plan, spec, tasks)
+4. Update of Sync Impact Report in constitution file header
+
+### Complexity Justification
+
+Deviations from simplicity MUST be justified:
+- Provider-specific unit handling → Reflects upstream API reality
+- Hard-coded location → Single-purpose application scope
+- Timezone conversion in serialization → User experience priority
+- Three-location provider registration → Rust trait system constraints
+
+### Compliance Review
+
+All code changes MUST verify:
+- Provider architecture pattern maintained
+- Unit documentation present for new measurements
+- Timezone handling follows standardization principle
+- Error messages are actionable
+- [`AGENTS.md`](../../AGENTS.md:1) updated for non-obvious patterns
+
+**Version**: 1.0.0 | **Ratified**: 2025-12-07 | **Last Amended**: 2025-12-07

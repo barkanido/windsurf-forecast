@@ -70,25 +70,48 @@
 <!--
   ACTION REQUIRED: The content in this section represents placeholders.
   Fill them out with the right edge cases.
+  
+  For weather forecast features, consider:
+  - API quota limits and rate limiting
+  - Invalid/missing API keys
+  - Network timeouts and service unavailability
+  - Invalid coordinate ranges
+  - Date range constraint violations (days_ahead + first_day_offset > 7)
+  - Provider-specific unit handling edge cases
 -->
 
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
+- Are error messages actionable per constitution Error Transparency principle?
 
 ## Requirements *(mandatory)*
 
 <!--
   ACTION REQUIRED: The content in this section represents placeholders.
   Fill them out with the right functional requirements.
+  
+  Constitution alignment checklist:
+  - Provider Architecture: If adding weather provider, must implement ForecastProvider trait
+  - Unit Handling: Specify units for all measurements, document conversions
+  - Timezone: All timestamps UTC internal, Asia/Jerusalem output
+  - Configuration: Use .env for API keys with unique variable names
+  - CLI-First: Expose via command-line with --help documentation
 -->
 
 ### Functional Requirements
 
 - **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
-- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]  
+- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
+
+### Constitution Compliance *(if applicable)*
+
+- **Provider features**: MUST follow Provider Extension Protocol (7-step registration)
+- **Unit handling**: MUST document measurement units and conversions explicitly
+- **Error handling**: MUST provide actionable error messages per Error Transparency principle
+- **Configuration**: MUST use environment variables via .env, never hardcode API keys
 
 *Example of marking unclear requirements:*
 

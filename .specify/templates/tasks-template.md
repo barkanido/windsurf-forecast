@@ -69,6 +69,14 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T008 Configure error handling and logging infrastructure
 - [ ] T009 Setup environment configuration management
 
+**For weather provider features** (per Provider Architecture Pattern):
+- [ ] T004 Implement ForecastProvider trait in src/forecast_provider.rs
+- [ ] T005 [P] Create WeatherDataPoint common data structure
+- [ ] T006 [P] Setup environment variable management with dotenv
+- [ ] T007 Configure CLI argument parsing with clap
+- [ ] T008 Implement timezone conversion serializer (UTC → Asia/Jerusalem)
+- [ ] T009 Setup error handling with anyhow::Result and thiserror
+
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
 ---
@@ -94,6 +102,17 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
 - [ ] T016 [US1] Add validation and error handling
 - [ ] T017 [US1] Add logging for user story 1 operations
+
+**For weather provider implementation** (Provider Extension Protocol):
+- [ ] T012 [US1] Create provider module in src/providers/[provider_name].rs
+- [ ] T013 [US1] Implement ForecastProvider trait for [ProviderName]Provider
+- [ ] T014 [US1] Add provider to src/providers/mod.rs exports
+- [ ] T015 [US1] Update create_provider() in src/main.rs with match arm
+- [ ] T016 [US1] Update run() API key retrieval in src/main.rs with match arm
+- [ ] T017 [US1] Update validate_provider() in src/args.rs to accept provider name
+- [ ] T018 [US1] Document unit conversions and provider-specific behavior
+- [ ] T019 [US1] Add provider to ADDING_PROVIDERS.md documentation
+- [ ] T020 [US1] Update .env.example with new provider's API key variable
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
