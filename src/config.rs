@@ -236,6 +236,74 @@ pub fn save_config(config: &Config, path: Option<&PathBuf>) -> Result<()> {
 }
 
 // ============================================================================
+// Coordinate Validation & Precedence
+// ============================================================================
+
+/// Validate coordinate ranges
+///
+/// # Arguments
+/// * `lat` - Latitude value to validate
+/// * `lng` - Longitude value to validate
+///
+/// # Returns
+/// * `Ok(())` - If coordinates are within valid ranges
+/// * `Err` - If coordinates are out of bounds
+pub fn validate_coordinates(lat: f64, lng: f64) -> Result<()> {
+    if !(-90.0..=90.0).contains(&lat) {
+        anyhow::bail!(
+            "Latitude {} is out of valid range. Must be between -90.0 and 90.0 degrees.",
+            lat
+        );
+    }
+    
+    if !(-180.0..=180.0).contains(&lng) {
+        anyhow::bail!(
+            "Longitude {} is out of valid range. Must be between -180.0 and 180.0 degrees.",
+            lng
+        );
+    }
+    
+    Ok(())
+}
+
+/// Apply coordinate precedence: CLI args override config file values
+///
+/// This function implements the precedence logic used in main.rs where
+/// CLI-provided coordinates take precedence over config file coordinates.
+/// Also validates that coordinates are within valid ranges.
+///
+/// # Arguments
+/// * `cli_lat` - Latitude from CLI argument (--lat)
+/// * `cli_lng` - Longitude from CLI argument (--lng)
+/// * `config` - Config loaded from file
+///
+/// # Returns
+/// * `Ok((lat, lng))` - Final validated coordinates to use
+/// * `Err` - If neither CLI nor config provide coordinates, or if coordinates are invalid
+pub fn resolve_coordinates(
+    cli_lat: Option<f64>,
+    cli_lng: Option<f64>,
+    config: &Config,
+) -> Result<(f64, f64)> {
+    let lat = cli_lat
+        .or(config.general.lat)
+        .ok_or_else(|| anyhow!(
+            "Latitude not specified. Provide via --lat argument or configure in config file."
+        ))?;
+    
+    let lng = cli_lng
+        .or(config.general.lng)
+        .ok_or_else(|| anyhow!(
+            "Longitude not specified. Provide via --lng argument or configure in config file."
+        ))?;
+    
+    // Validate coordinate ranges
+    validate_coordinates(lat, lng)?;
+    
+    Ok((lat, lng))
+}
+
+// ============================================================================
 // Timezone Validation & Interactive Selection
 // ============================================================================
 

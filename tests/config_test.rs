@@ -86,7 +86,9 @@ this is not valid TOML
 
 #[test]
 fn test_cli_args_override_config_file_coordinates() {
-    // Arrange - Config file has one set of coordinates
+    use windsurf_forecast::config::resolve_coordinates;
+    
+    // Arrange - Config file has Tel Aviv coordinates
     let mut temp_file = NamedTempFile::new().unwrap();
     write!(temp_file, r#"
 [general]
@@ -97,17 +99,24 @@ timezone = "Asia/Jerusalem"
     
     let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
     
-    // CLI args specify different coordinates
-    let cli_lat = Some(40.7128);  // New York
+    // Verify config loaded correctly
+    assert_eq!(config.general.lat, Some(32.486722), "Config should have Tel Aviv lat");
+    assert_eq!(config.general.lng, Some(34.888722), "Config should have Tel Aviv lng");
+    
+    // Act - CLI args specify New York coordinates (different from config)
+    let cli_lat = Some(40.7128);
     let cli_lng = Some(-74.0060);
+    let result = resolve_coordinates(cli_lat, cli_lng, &config);
     
-    // Act - Simulate precedence logic
-    let final_lat = cli_lat.or(config.general.lat);
-    let final_lng = cli_lng.or(config.general.lng);
+    // Assert - CLI values should override config values
+    assert!(result.is_ok(), "Should successfully resolve coordinates");
+    let (final_lat, final_lng) = result.unwrap();
+    assert_eq!(final_lat, 40.7128, "CLI lat should override config lat (32.486722 → 40.7128)");
+    assert_eq!(final_lng, -74.0060, "CLI lng should override config lng (34.888722 → -74.0060)");
     
-    // Assert
-    assert_eq!(final_lat, Some(40.7128), "CLI lat should override config");
-    assert_eq!(final_lng, Some(-74.0060), "CLI lng should override config");
+    // Verify we're actually testing override, not just default behavior
+    assert_ne!(final_lat, config.general.lat.unwrap(), "Should not be using config lat");
+    assert_ne!(final_lng, config.general.lng.unwrap(), "Should not be using config lng");
 }
 
 #[test]
@@ -128,7 +137,9 @@ fn test_cli_timezone_overrides_config_file() {
 
 #[test]
 fn test_config_file_coordinates_used_when_cli_not_provided() {
-    // Arrange
+    use windsurf_forecast::config::resolve_coordinates;
+    
+    // Arrange - Config file has coordinates
     let mut temp_file = NamedTempFile::new().unwrap();
     write!(temp_file, r#"
 [general]
@@ -138,17 +149,44 @@ lng = 34.888722
     
     let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
     
-    // CLI args don't specify coordinates
+    // Act - CLI args don't specify coordinates (None)
     let cli_lat: Option<f64> = None;
     let cli_lng: Option<f64> = None;
+    let result = resolve_coordinates(cli_lat, cli_lng, &config);
     
-    // Act
-    let final_lat = cli_lat.or(config.general.lat);
-    let final_lng = cli_lng.or(config.general.lng);
+    // Assert - Should fall back to config values
+    assert!(result.is_ok(), "Should successfully resolve coordinates from config");
+    let (final_lat, final_lng) = result.unwrap();
+    assert_eq!(final_lat, 32.486722, "Should use config lat when CLI not provided");
+    assert_eq!(final_lng, 34.888722, "Should use config lng when CLI not provided");
+}
+
+#[test]
+fn test_missing_coordinates_returns_error() {
+    use windsurf_forecast::config::resolve_coordinates;
     
-    // Assert
-    assert_eq!(final_lat, Some(32.486722), "Should use config lat");
-    assert_eq!(final_lng, Some(34.888722), "Should use config lng");
+    // Arrange - Config file has NO coordinates
+    let mut temp_file = NamedTempFile::new().unwrap();
+    write!(temp_file, r#"
+[general]
+timezone = "UTC"
+    "#).unwrap();
+    
+    let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
+    
+    // Act - CLI args also don't specify coordinates
+    let cli_lat: Option<f64> = None;
+    let cli_lng: Option<f64> = None;
+    let result = resolve_coordinates(cli_lat, cli_lng, &config);
+    
+    // Assert - Should return error with helpful message
+    assert!(result.is_err(), "Should fail when neither CLI nor config provide coordinates");
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("Latitude") || err_msg.contains("--lat"),
+        "Error should mention latitude: {}",
+        err_msg
+    );
 }
 
 // ============================================================================
@@ -211,8 +249,10 @@ fn test_save_load_roundtrip_preserves_values() {
 // ============================================================================
 
 #[test]
-fn test_coordinate_validation_within_bounds() {
-    // Valid coordinate ranges
+fn test_coordinate_validation_accepts_valid_coordinates() {
+    use windsurf_forecast::config::{resolve_coordinates, validate_coordinates};
+    
+    // Arrange - Valid coordinates from different locations
     let valid_coordinates = vec![
         (32.486722, 34.888722),   // Tel Aviv
         (40.7128, -74.0060),      // New York
@@ -222,36 +262,124 @@ fn test_coordinate_validation_within_bounds() {
         (-90.0, -180.0),          // Min bounds
     ];
     
+    let mut temp_file = NamedTempFile::new().unwrap();
+    write!(temp_file, r#"
+[general]
+timezone = "UTC"
+    "#).unwrap();
+    let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
+    
+    // Act & Assert - Application should accept all valid coordinates
     for (lat, lng) in valid_coordinates {
+        // Test validate_coordinates directly
+        let validation_result = validate_coordinates(lat, lng);
         assert!(
-            (-90.0..=90.0).contains(&lat),
-            "Latitude {} should be in valid range",
-            lat
+            validation_result.is_ok(),
+            "Should accept valid coordinates ({}, {}): {:?}",
+            lat, lng, validation_result
         );
+        
+        // Test resolve_coordinates (which calls validate_coordinates)
+        let result = resolve_coordinates(Some(lat), Some(lng), &config);
         assert!(
-            (-180.0..=180.0).contains(&lng),
-            "Longitude {} should be in valid range",
-            lng
+            result.is_ok(),
+            "Should accept valid coordinates ({}, {}): {:?}",
+            lat, lng, result
+        );
+        let (resolved_lat, resolved_lng) = result.unwrap();
+        assert_eq!(resolved_lat, lat, "Latitude should be preserved");
+        assert_eq!(resolved_lng, lng, "Longitude should be preserved");
+    }
+}
+
+#[test]
+fn test_coordinate_validation_rejects_out_of_bounds_latitude() {
+    use windsurf_forecast::config::{resolve_coordinates, validate_coordinates};
+    
+    // Arrange - Invalid latitude values
+    let invalid_latitudes = vec![
+        (91.0, 0.0),      // Latitude too high (valid: -90 to 90)
+        (-91.0, 0.0),     // Latitude too low
+        (100.0, 34.0),    // Way out of bounds
+    ];
+    
+    let mut temp_file = NamedTempFile::new().unwrap();
+    write!(temp_file, r#"
+[general]
+timezone = "UTC"
+    "#).unwrap();
+    let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
+    
+    // Act & Assert - Application should reject invalid latitudes
+    for (lat, lng) in invalid_latitudes {
+        // Test validate_coordinates directly
+        let validation_result = validate_coordinates(lat, lng);
+        assert!(
+            validation_result.is_err(),
+            "Should reject invalid latitude {}", lat
+        );
+        let err_msg = validation_result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("Latitude") && err_msg.contains("-90.0") && err_msg.contains("90.0"),
+            "Error should mention latitude range: {}", err_msg
+        );
+        
+        // Test resolve_coordinates (which calls validate_coordinates)
+        let result = resolve_coordinates(Some(lat), Some(lng), &config);
+        assert!(
+            result.is_err(),
+            "Should reject invalid latitude {}", lat
+        );
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("Latitude"),
+            "Error should mention latitude: {}", err_msg
         );
     }
 }
 
 #[test]
-fn test_coordinate_validation_out_of_bounds() {
-    // Invalid coordinate ranges
-    let invalid_coordinates = vec![
-        (91.0, 0.0),      // Latitude too high
-        (-91.0, 0.0),     // Latitude too low
-        (0.0, 181.0),     // Longitude too high
+fn test_coordinate_validation_rejects_out_of_bounds_longitude() {
+    use windsurf_forecast::config::{resolve_coordinates, validate_coordinates};
+    
+    // Arrange - Invalid longitude values
+    let invalid_longitudes = vec![
+        (0.0, 181.0),     // Longitude too high (valid: -180 to 180)
         (0.0, -181.0),    // Longitude too low
+        (32.0, 200.0),    // Way out of bounds
     ];
     
-    for (lat, lng) in invalid_coordinates {
-        let is_invalid = !(-90.0..=90.0).contains(&lat) || !(-180.0..=180.0).contains(&lng);
+    let mut temp_file = NamedTempFile::new().unwrap();
+    write!(temp_file, r#"
+[general]
+timezone = "UTC"
+    "#).unwrap();
+    let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
+    
+    // Act & Assert - Application should reject invalid longitudes
+    for (lat, lng) in invalid_longitudes {
+        // Test validate_coordinates directly
+        let validation_result = validate_coordinates(lat, lng);
         assert!(
-            is_invalid,
-            "Coordinates ({}, {}) should be detected as invalid",
-            lat, lng
+            validation_result.is_err(),
+            "Should reject invalid longitude {}", lng
+        );
+        let err_msg = validation_result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("Longitude") && err_msg.contains("-180.0") && err_msg.contains("180.0"),
+            "Error should mention longitude range: {}", err_msg
+        );
+        
+        // Test resolve_coordinates (which calls validate_coordinates)
+        let result = resolve_coordinates(Some(lat), Some(lng), &config);
+        assert!(
+            result.is_err(),
+            "Should reject invalid longitude {}", lng
+        );
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("Longitude"),
+            "Error should mention longitude: {}", err_msg
         );
     }
 }

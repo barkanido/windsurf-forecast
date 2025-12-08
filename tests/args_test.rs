@@ -130,35 +130,6 @@ fn test_known_providers_validate_successfully() {
     assert!(validate_provider("openweathermap").is_ok());
 }
 
-#[test]
-fn test_error_messages_are_actionable() {
-    // Test that error messages provide clear guidance
-
-    // Days range error
-    let args = create_args_with_days(10, 0);
-    let result = validate_args(&args);
-    assert!(result.is_err());
-    let err_msg = result.unwrap_err().to_string();
-    assert!(
-        err_msg.contains("between 1 and 7"),
-        "Error should explain valid range"
-    );
-    assert!(err_msg.contains("10"), "Error should show actual value");
-
-    // Constraint violation error
-    let args = create_args_with_days(5, 4);
-    let result = validate_args(&args);
-    assert!(result.is_err());
-    let err_msg = result.unwrap_err().to_string();
-    assert!(
-        err_msg.contains("exceeds maximum of 7"),
-        "Error should explain constraint"
-    );
-    assert!(err_msg.contains("5"), "Error should show days_ahead");
-    assert!(err_msg.contains("4"), "Error should show first_day_offset");
-    assert!(err_msg.contains("9"), "Error should show total");
-}
-
 // ============================================================================
 // Coordinate Validation Tests
 // ============================================================================

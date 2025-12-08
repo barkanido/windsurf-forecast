@@ -215,17 +215,8 @@ async fn run() -> Result<()> {
         .unwrap();
     let end = Utc.from_utc_datetime(&end);
 
-    // Get coordinates from CLI args or config file
-    let lat = args.lat
-        .or(config.general.lat)
-        .ok_or_else(|| anyhow::anyhow!(
-            "Latitude not specified. Provide via --lat argument or configure in config file."
-        ))?;
-    let lng = args.lng
-        .or(config.general.lng)
-        .ok_or_else(|| anyhow::anyhow!(
-            "Longitude not specified. Provide via --lng argument or configure in config file."
-        ))?;
+    // Get coordinates from CLI args or config file (CLI takes precedence)
+    let (lat, lng) = config::resolve_coordinates(args.lat, args.lng, &config)?;
     
     // Determine coordinate source for display
     let coord_source = if args.lat.is_some() && args.lng.is_some() {
