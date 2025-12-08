@@ -8,8 +8,6 @@
 mod common;
 
 use serde_json::json;
-use chrono::{DateTime, Utc};
-use httpmock::prelude::*;
 use windsurf_forecast::forecast_provider::ForecastProvider;
 use windsurf_forecast::providers::openweathermap::OpenWeatherMapProvider;
 
@@ -180,7 +178,7 @@ fn test_openweathermap_temperature_field() {
     assert!(temp.is_some(), "Should have temperature value");
     
     let temp_value = temp.unwrap();
-    assert!(temp_value >= -50.0 && temp_value <= 60.0, 
+    assert!((-50.0..=60.0).contains(&temp_value),
         "Temperature {} should be in reasonable range", temp_value);
 }
 
@@ -285,12 +283,10 @@ fn test_openweathermap_missing_required_fields() {
 
 #[test]
 fn test_openweathermap_invalid_unix_timestamp() {
-    use chrono::{DateTime, Utc};
-    
     // Test with invalid timestamp values
     // Very large values might not parse correctly
     let invalid_timestamp: i64 = i64::MAX;
-    let result = DateTime::<Utc>::from_timestamp(invalid_timestamp, 0);
+    let _result = chrono::DateTime::<chrono::Utc>::from_timestamp(invalid_timestamp, 0);
     
     // This may or may not parse depending on system
     // Just document the behavior
@@ -317,7 +313,7 @@ fn test_openweathermap_temperature_in_celsius() {
     let temps = vec![-20.0, 0.0, 15.0, 25.0, 40.0];
     
     for temp in temps {
-        assert!(temp >= -50.0 && temp <= 60.0,
+        assert!((-50.0..=60.0).contains(&temp),
             "Temperature {} should be in reasonable Celsius range", temp);
     }
 }
@@ -328,7 +324,7 @@ fn test_openweathermap_direction_valid_range() {
     let directions = vec![0.0, 90.0, 180.0, 270.0, 359.9];
     
     for direction in directions {
-        assert!(direction >= 0.0 && direction < 360.0,
+        assert!((0.0..360.0).contains(&direction),
             "Direction {} should be in 0-360 range", direction);
     }
 }
@@ -362,8 +358,8 @@ fn test_openweathermap_coordinate_validation() {
     let lat = coord["lat"].as_f64().unwrap();
     let lon = coord["lon"].as_f64().unwrap();
     
-    assert!(lat >= -90.0 && lat <= 90.0, "Latitude should be in valid range");
-    assert!(lon >= -180.0 && lon <= 180.0, "Longitude should be in valid range");
+    assert!((-90.0..=90.0).contains(&lat), "Latitude should be in valid range");
+    assert!((-180.0..=180.0).contains(&lon), "Longitude should be in valid range");
 }
 
 // ============================================================================

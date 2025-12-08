@@ -7,10 +7,7 @@
 
 mod common;
 
-use httpmock::prelude::*;
 use serde_json::json;
-use chrono::{DateTime, Duration, Utc};
-use chrono_tz::Tz;
 use windsurf_forecast::forecast_provider::ForecastProvider;
 use windsurf_forecast::providers::stormglass::StormGlassProvider;
 
@@ -338,7 +335,7 @@ fn test_stormglass_temperature_reasonable_ranges() {
     
     for temp in temps_celsius {
         // Air temperature: typically -40°C to +50°C
-        assert!(temp >= -50.0 && temp <= 60.0, 
+        assert!((-50.0..=60.0).contains(&temp),
             "Temperature {} seems outside reasonable range", temp);
     }
 }
@@ -349,7 +346,7 @@ fn test_stormglass_direction_valid_range() {
     let directions = vec![0.0, 45.0, 90.0, 180.0, 270.0, 359.0];
     
     for direction in directions {
-        assert!(direction >= 0.0 && direction < 360.0,
+        assert!((0.0..360.0).contains(&direction),
             "Direction {} should be in 0-360 range", direction);
     }
 }

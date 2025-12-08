@@ -9,12 +9,8 @@
 // - Temporary config file helpers
 // - Common test data and constants
 
-use chrono_tz::Tz;
 use serde_json::json;
-use std::path::PathBuf;
-use tempfile::NamedTempFile;
 use windsurf_forecast::args::Args;
-use windsurf_forecast::config::{Config, GeneralConfig};
 
 // ============================================================================
 // Args Test Helpers
@@ -66,76 +62,6 @@ pub fn create_args_with_timezone(timezone: &str) -> Args {
     Args {
         timezone: Some(timezone.to_string()),
         ..create_valid_args()
-    }
-}
-
-/// Create Args with missing coordinates
-pub fn create_args_without_coordinates() -> Args {
-    Args {
-        lat: None,
-        lng: None,
-        ..create_valid_args()
-    }
-}
-
-// ============================================================================
-// Config File Test Helpers
-// ============================================================================
-
-/// Create a temporary config file with the given content
-/// Returns a NamedTempFile that will be automatically deleted when dropped
-pub fn create_temp_config(config: &Config) -> std::io::Result<NamedTempFile> {
-    let temp_file = NamedTempFile::new()?;
-    let toml_string = toml::to_string_pretty(config).unwrap();
-    std::fs::write(temp_file.path(), toml_string)?;
-    Ok(temp_file)
-}
-
-/// Create a Config with default values
-pub fn create_default_config() -> Config {
-    Config {
-        general: GeneralConfig {
-            timezone: "UTC".to_string(),
-            default_provider: "stormglass".to_string(),
-            lat: None,
-            lng: None,
-        },
-    }
-}
-
-/// Create a Config with custom coordinates
-pub fn create_config_with_coordinates(lat: f64, lng: f64) -> Config {
-    Config {
-        general: GeneralConfig {
-            timezone: "UTC".to_string(),
-            default_provider: "stormglass".to_string(),
-            lat: Some(lat),
-            lng: Some(lng),
-        },
-    }
-}
-
-/// Create a Config with custom timezone
-pub fn create_config_with_timezone(timezone: &str) -> Config {
-    Config {
-        general: GeneralConfig {
-            timezone: timezone.to_string(),
-            default_provider: "stormglass".to_string(),
-            lat: None,
-            lng: None,
-        },
-    }
-}
-
-/// Create a Config with all fields populated
-pub fn create_complete_config() -> Config {
-    Config {
-        general: GeneralConfig {
-            timezone: "Asia/Jerusalem".to_string(),
-            default_provider: "stormglass".to_string(),
-            lat: Some(32.486722),
-            lng: Some(34.888722),
-        },
     }
 }
 
@@ -196,15 +122,6 @@ pub fn mock_stormglass_partial_response() -> serde_json::Value {
                 // Note: Missing gust, swell data, and water temperature
             }
         ]
-    })
-}
-
-/// Create a single StormGlass hour data point for unit tests
-pub fn mock_stormglass_single_hour(timestamp: &str, wind_speed_ms: f64) -> serde_json::Value {
-    json!({
-        "time": timestamp,
-        "windSpeed": { "sg": wind_speed_ms },
-        "windDirection": { "sg": 270.0 }
     })
 }
 
@@ -290,36 +207,9 @@ pub fn mock_openweathermap_no_gust() -> serde_json::Value {
     })
 }
 
-/// Create a single OpenWeatherMap item for unit tests
-pub fn mock_openweathermap_single_item(timestamp: i64, temp: f64, wind_speed_ms: f64) -> serde_json::Value {
-    json!({
-        "dt": timestamp,
-        "main": {
-            "temp": temp
-        },
-        "wind": {
-            "speed": wind_speed_ms,
-            "deg": 270.0
-        },
-        "timezone": 0
-    })
-}
-
 // ============================================================================
 // Test Constants
 // ============================================================================
-
-/// Standard test coordinates (Netanya, Israel)
-pub const TEST_LAT: f64 = 32.486722;
-pub const TEST_LNG: f64 = 34.888722;
-
-/// Standard test timezone
-pub const TEST_TIMEZONE: &str = "Asia/Jerusalem";
-
-/// Parse test timezone as Tz
-pub fn test_timezone() -> Tz {
-    TEST_TIMEZONE.parse().unwrap()
-}
 
 /// Wind speed conversion constant (m/s to knots) - StormGlass specific
 pub const MS_TO_KNOTS: f64 = 1.94384;

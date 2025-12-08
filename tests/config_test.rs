@@ -226,12 +226,12 @@ fn test_coordinate_validation_within_bounds() {
     
     for (lat, lng) in valid_coordinates {
         assert!(
-            lat >= -90.0 && lat <= 90.0,
+            (-90.0..=90.0).contains(&lat),
             "Latitude {} should be in valid range",
             lat
         );
         assert!(
-            lng >= -180.0 && lng <= 180.0,
+            (-180.0..=180.0).contains(&lng),
             "Longitude {} should be in valid range",
             lng
         );
@@ -249,7 +249,7 @@ fn test_coordinate_validation_out_of_bounds() {
     ];
     
     for (lat, lng) in invalid_coordinates {
-        let is_invalid = lat < -90.0 || lat > 90.0 || lng < -180.0 || lng > 180.0;
+        let is_invalid = !(-90.0..=90.0).contains(&lat) || !(-180.0..=180.0).contains(&lng);
         assert!(
             is_invalid,
             "Coordinates ({}, {}) should be detected as invalid",
