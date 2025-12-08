@@ -4,8 +4,6 @@
 //
 // Tests for configuration file handling, precedence rules, and validation.
 
-mod common;
-
 use tempfile::NamedTempFile;
 use std::io::Write;
 use windsurf_forecast::config::{

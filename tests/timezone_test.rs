@@ -4,9 +4,8 @@
 //
 // Tests for timezone handling, conversion accuracy, and timestamp serialization.
 
-mod common;
-
 use windsurf_forecast::config::TimezoneConfig;
+use windsurf_forecast::test_utils::*;
 use windsurf_forecast::forecast_provider::{convert_timezone, UtcTimestamp};
 use chrono::Timelike;
 use chrono_tz::Tz;
@@ -113,7 +112,7 @@ fn test_local_timestamp_serialization_format() {
     let timestamp = serialized.trim_matches('"');
     
     // Should match "YYYY-MM-DD HH:MM" format (not "YYYY-MM-DDTHH:MM:SSZ")
-    assert!(common::assert_timestamp_format(timestamp), 
+    assert!(assert_timestamp_format(timestamp),
         "Timestamp should be in 'YYYY-MM-DD HH:MM' format, got: {}", timestamp);
     
     // Should not contain ISO 8601 characters
@@ -146,7 +145,7 @@ fn test_weather_data_point_timestamp_serialization() {
     let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
     
     let time_str = parsed["time"].as_str().unwrap();
-    assert!(common::assert_timestamp_format(time_str),
+    assert!(assert_timestamp_format(time_str),
         "WeatherDataPoint timestamp should use correct format");
     assert!(time_str.contains("14:00"), "Should show Jerusalem time (UTC+2)");
 }

@@ -5,9 +5,8 @@
 // Tests for StormGlass provider data transformations, unit conversions,
 // and error handling using mocked HTTP responses.
 
-mod common;
-
 use serde_json::json;
+use windsurf_forecast::test_utils::*;
 use windsurf_forecast::forecast_provider::ForecastProvider;
 use windsurf_forecast::providers::stormglass::StormGlassProvider;
 
@@ -77,7 +76,7 @@ fn test_stormglass_gust_conversion_uses_same_factor() {
 #[test]
 fn test_stormglass_response_structure_complete() {
     // Verify we can parse a complete StormGlass response
-    let response = common::mock_stormglass_complete_response();
+    let response = mock_stormglass_complete_response();
     
     // Should have 'hours' array
     assert!(response["hours"].is_array());
@@ -100,7 +99,7 @@ fn test_stormglass_response_structure_complete() {
 #[test]
 fn test_stormglass_response_structure_minimal() {
     // Verify minimal response with only time field works
-    let response = common::mock_stormglass_minimal_response();
+    let response = mock_stormglass_minimal_response();
     
     let hours = response["hours"].as_array().unwrap();
     let first_hour = &hours[0];
@@ -115,7 +114,7 @@ fn test_stormglass_response_structure_minimal() {
 #[test]
 fn test_stormglass_response_structure_partial() {
     // Verify partial response with some fields missing
-    let response = common::mock_stormglass_partial_response();
+    let response = mock_stormglass_partial_response();
     
     let hours = response["hours"].as_array().unwrap();
     let first_hour = &hours[0];
@@ -168,7 +167,7 @@ fn test_stormglass_timestamp_with_timezone_offset() {
 #[test]
 fn test_stormglass_field_names_match_api() {
     // Verify our mock data uses correct StormGlass field names
-    let response = common::mock_stormglass_complete_response();
+    let response = mock_stormglass_complete_response();
     let hour = &response["hours"][0];
     
     // StormGlass uses camelCase for field names
@@ -184,7 +183,7 @@ fn test_stormglass_field_names_match_api() {
 #[test]
 fn test_stormglass_source_data_structure() {
     // StormGlass wraps values in source objects
-    let response = common::mock_stormglass_complete_response();
+    let response = mock_stormglass_complete_response();
     let hour = &response["hours"][0];
     
     // Each field has a "sg" (StormGlass) source value
@@ -199,7 +198,7 @@ fn test_stormglass_source_data_structure() {
 #[test]
 fn test_stormglass_handles_missing_optional_fields() {
     // When optional fields are missing, they should be None in output
-    let response = common::mock_stormglass_minimal_response();
+    let response = mock_stormglass_minimal_response();
     
     // Minimal response should parse without errors
     // In actual implementation, this would test the transform logic
@@ -209,7 +208,7 @@ fn test_stormglass_handles_missing_optional_fields() {
 #[test]
 fn test_stormglass_handles_null_values() {
     // API may return null for unavailable data
-    let response = common::mock_stormglass_partial_response();
+    let response = mock_stormglass_partial_response();
     let hour = &response["hours"][0];
     
     // Some fields are explicitly null

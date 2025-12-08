@@ -1,16 +1,21 @@
 // ============================================================================
-// Common Test Helpers and Mock Data Builders
+// Test Utilities and Mock Data Builders
 // ============================================================================
 //
 // This module provides test utilities and mock data structures for testing
-// the windsurf-forecast application. It includes:
+// the windsurf-forecast application. It is only compiled when running tests.
+//
+// IMPORTANT: This module is conditionally compiled with #[cfg(test)] in lib.rs
+// and should only be used in test code, not production code.
+//
+// It includes:
 // - Helper functions for creating valid Args structures
 // - Mock API response builders for StormGlass and OpenWeatherMap
-// - Temporary config file helpers
 // - Common test data and constants
+// - Assertion helpers for test validation
 
 use serde_json::json;
-use windsurf_forecast::args::Args;
+use crate::args::Args;
 
 // ============================================================================
 // Args Test Helpers
@@ -233,7 +238,7 @@ pub fn assert_wind_speed_converted(input_ms: f64, output_knots: f64) {
 
 /// Assert that a timestamp string matches the expected format "YYYY-MM-DD HH:MM"
 pub fn assert_timestamp_format(timestamp: &str) -> bool {
-    // Expected format: "YYYY-MM-DD HH:MM" (19 characters)
+    // Expected format: "YYYY-MM-DD HH:MM" (16 characters)
     if timestamp.len() != 16 {
         return false;
     }

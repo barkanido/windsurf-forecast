@@ -5,9 +5,8 @@
 // Tests for OpenWeatherMap provider data transformations and field mappings.
 // Key difference: OpenWeatherMap does NOT convert wind speeds (stays in m/s).
 
-mod common;
-
 use serde_json::json;
+use windsurf_forecast::test_utils::*;
 use windsurf_forecast::forecast_provider::ForecastProvider;
 use windsurf_forecast::providers::openweathermap::OpenWeatherMapProvider;
 
@@ -67,7 +66,7 @@ fn test_openweathermap_gust_remains_in_ms() {
 #[test]
 fn test_openweathermap_response_structure_complete() {
     // Verify we can parse a complete OpenWeatherMap response
-    let response = common::mock_openweathermap_complete_response();
+    let response = mock_openweathermap_complete_response();
     
     // Should have 'list' array (not 'hours' like StormGlass)
     assert!(response["list"].is_array());
@@ -84,7 +83,7 @@ fn test_openweathermap_response_structure_complete() {
 #[test]
 fn test_openweathermap_response_structure_minimal() {
     // Verify minimal response structure
-    let response = common::mock_openweathermap_minimal_response();
+    let response = mock_openweathermap_minimal_response();
     
     let list = response["list"].as_array().unwrap();
     let first_item = &list[0];
@@ -97,7 +96,7 @@ fn test_openweathermap_response_structure_minimal() {
 #[test]
 fn test_openweathermap_response_without_gust() {
     // Gust is optional in OpenWeatherMap responses
-    let response = common::mock_openweathermap_no_gust();
+    let response = mock_openweathermap_no_gust();
     
     let list = response["list"].as_array().unwrap();
     let first_item = &list[0];
@@ -151,7 +150,7 @@ fn test_openweathermap_timestamp_edge_cases() {
 #[test]
 fn test_openweathermap_field_names_match_api() {
     // Verify our mock data uses correct OpenWeatherMap field names
-    let response = common::mock_openweathermap_complete_response();
+    let response = mock_openweathermap_complete_response();
     let item = &response["list"][0];
     
     // OpenWeatherMap uses specific field names
@@ -171,7 +170,7 @@ fn test_openweathermap_field_names_match_api() {
 #[test]
 fn test_openweathermap_temperature_field() {
     // OpenWeatherMap uses 'temp' in the 'main' object
-    let response = common::mock_openweathermap_complete_response();
+    let response = mock_openweathermap_complete_response();
     let item = &response["list"][0];
     
     let temp = item["main"]["temp"].as_f64();
@@ -185,7 +184,7 @@ fn test_openweathermap_temperature_field() {
 #[test]
 fn test_openweathermap_wind_fields() {
     // OpenWeatherMap wind object structure
-    let response = common::mock_openweathermap_complete_response();
+    let response = mock_openweathermap_complete_response();
     let item = &response["list"][0];
     let wind = &item["wind"];
     
@@ -204,8 +203,8 @@ fn test_openweathermap_wind_fields() {
 #[test]
 fn test_openweathermap_gust_field_optional() {
     // Gust field may be missing in some responses
-    let response_with_gust = common::mock_openweathermap_complete_response();
-    let response_without_gust = common::mock_openweathermap_no_gust();
+    let response_with_gust = mock_openweathermap_complete_response();
+    let response_without_gust = mock_openweathermap_no_gust();
     
     // With gust
     let with = &response_with_gust["list"][0]["wind"]["gust"];
@@ -221,7 +220,7 @@ fn test_openweathermap_marine_data_not_available() {
     // OpenWeatherMap doesn't provide marine data (swell, water temp)
     // These should be None in transformed output
     
-    let response = common::mock_openweathermap_complete_response();
+    let response = mock_openweathermap_complete_response();
     let item = &response["list"][0];
     
     // Verify marine fields don't exist in OpenWeatherMap response
@@ -336,7 +335,7 @@ fn test_openweathermap_direction_valid_range() {
 #[test]
 fn test_openweathermap_city_information_structure() {
     // OpenWeatherMap includes city information in response
-    let response = common::mock_openweathermap_complete_response();
+    let response = mock_openweathermap_complete_response();
     
     assert!(response["city"].is_object(), "Should have city information");
     let city = &response["city"];
@@ -352,7 +351,7 @@ fn test_openweathermap_city_information_structure() {
 #[test]
 fn test_openweathermap_coordinate_validation() {
     // Verify coordinates are in valid ranges
-    let response = common::mock_openweathermap_complete_response();
+    let response = mock_openweathermap_complete_response();
     let coord = &response["city"]["coord"];
     
     let lat = coord["lat"].as_f64().unwrap();

@@ -5,46 +5,45 @@
 // Tests for command-line argument parsing and validation logic.
 // Covers valid combinations, boundary conditions, and error cases.
 
-mod common;
-
 use windsurf_forecast::args::{validate_args, validate_provider};
+use windsurf_forecast::test_utils::*;
 
 #[test]
 fn test_valid_argument_combinations() {
     // Test with default values
-    let args = common::create_valid_args();
+    let args = create_valid_args();
     assert!(validate_args(&args).is_ok());
 
     // Test with explicit coordinates
-    let args = common::create_args_with_coordinates(40.7128, -74.0060);
+    let args = create_args_with_coordinates(40.7128, -74.0060);
     assert!(validate_args(&args).is_ok());
 
     // Test with different provider
-    let args = common::create_args_with_provider("openweathermap");
+    let args = create_args_with_provider("openweathermap");
     assert!(validate_args(&args).is_ok());
 
     // Test with custom timezone
-    let args = common::create_args_with_timezone("America/New_York");
+    let args = create_args_with_timezone("America/New_York");
     assert!(validate_args(&args).is_ok());
 }
 
 #[test]
 fn test_boundary_condition_days_ahead_plus_offset_equals_7() {
     // Maximum allowed: days_ahead + first_day_offset = 7
-    let args = common::create_args_with_days(4, 3);
+    let args = create_args_with_days(4, 3);
     assert!(validate_args(&args).is_ok(), "4 + 3 = 7 should be valid");
 
-    let args = common::create_args_with_days(7, 0);
+    let args = create_args_with_days(7, 0);
     assert!(validate_args(&args).is_ok(), "7 + 0 = 7 should be valid");
 
-    let args = common::create_args_with_days(1, 6);
+    let args = create_args_with_days(1, 6);
     assert!(validate_args(&args).is_ok(), "1 + 6 = 7 should be valid");
 }
 
 #[test]
 fn test_constraint_violation_exceeds_7_days() {
     // Should fail when days_ahead + first_day_offset > 7
-    let args = common::create_args_with_days(5, 3);
+    let args = create_args_with_days(5, 3);
     let result = validate_args(&args);
     assert!(result.is_err(), "5 + 3 = 8 should fail");
     
@@ -55,14 +54,14 @@ fn test_constraint_violation_exceeds_7_days() {
     assert!(err_msg.contains("8"));
 
     // Another boundary violation
-    let args = common::create_args_with_days(7, 1);
+    let args = create_args_with_days(7, 1);
     let result = validate_args(&args);
     assert!(result.is_err(), "7 + 1 = 8 should fail");
 }
 
 #[test]
 fn test_days_ahead_zero_returns_error() {
-    let args = common::create_args_with_days(0, 0);
+    let args = create_args_with_days(0, 0);
     let result = validate_args(&args);
     assert!(result.is_err(), "days_ahead = 0 should fail");
     
@@ -73,7 +72,7 @@ fn test_days_ahead_zero_returns_error() {
 
 #[test]
 fn test_days_ahead_negative_returns_error() {
-    let args = common::create_args_with_days(-1, 0);
+    let args = create_args_with_days(-1, 0);
     let result = validate_args(&args);
     assert!(result.is_err(), "days_ahead = -1 should fail");
     
@@ -83,7 +82,7 @@ fn test_days_ahead_negative_returns_error() {
 
 #[test]
 fn test_days_ahead_exceeds_7_returns_error() {
-    let args = common::create_args_with_days(8, 0);
+    let args = create_args_with_days(8, 0);
     let result = validate_args(&args);
     assert!(result.is_err(), "days_ahead = 8 should fail");
     
@@ -94,7 +93,7 @@ fn test_days_ahead_exceeds_7_returns_error() {
 
 #[test]
 fn test_first_day_offset_negative_returns_error() {
-    let args = common::create_args_with_days(4, -1);
+    let args = create_args_with_days(4, -1);
     let result = validate_args(&args);
     assert!(result.is_err(), "first_day_offset = -1 should fail");
     
@@ -104,7 +103,7 @@ fn test_first_day_offset_negative_returns_error() {
 
 #[test]
 fn test_first_day_offset_exceeds_7_returns_error() {
-    let args = common::create_args_with_days(1, 8);
+    let args = create_args_with_days(1, 8);
     let result = validate_args(&args);
     assert!(result.is_err(), "first_day_offset = 8 should fail");
     
@@ -136,7 +135,7 @@ fn test_error_messages_are_actionable() {
     // Test that error messages provide clear guidance
 
     // Days range error
-    let args = common::create_args_with_days(10, 0);
+    let args = create_args_with_days(10, 0);
     let result = validate_args(&args);
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
@@ -147,7 +146,7 @@ fn test_error_messages_are_actionable() {
     assert!(err_msg.contains("10"), "Error should show actual value");
 
     // Constraint violation error
-    let args = common::create_args_with_days(5, 4);
+    let args = create_args_with_days(5, 4);
     let result = validate_args(&args);
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
@@ -169,26 +168,26 @@ fn test_error_messages_are_actionable() {
 #[test]
 fn test_args_accepts_valid_latitude_range() {
     // Valid latitude range: -90 to 90
-    let args = common::create_args_with_coordinates(90.0, 0.0);
+    let args = create_args_with_coordinates(90.0, 0.0);
     assert!(validate_args(&args).is_ok());
 
-    let args = common::create_args_with_coordinates(-90.0, 0.0);
+    let args = create_args_with_coordinates(-90.0, 0.0);
     assert!(validate_args(&args).is_ok());
 
-    let args = common::create_args_with_coordinates(0.0, 0.0);
+    let args = create_args_with_coordinates(0.0, 0.0);
     assert!(validate_args(&args).is_ok());
 }
 
 #[test]
 fn test_args_accepts_valid_longitude_range() {
     // Valid longitude range: -180 to 180
-    let args = common::create_args_with_coordinates(0.0, 180.0);
+    let args = create_args_with_coordinates(0.0, 180.0);
     assert!(validate_args(&args).is_ok());
 
-    let args = common::create_args_with_coordinates(0.0, -180.0);
+    let args = create_args_with_coordinates(0.0, -180.0);
     assert!(validate_args(&args).is_ok());
 
-    let args = common::create_args_with_coordinates(0.0, 0.0);
+    let args = create_args_with_coordinates(0.0, 0.0);
     assert!(validate_args(&args).is_ok());
 }
 
@@ -198,6 +197,6 @@ fn test_args_accepts_valid_longitude_range() {
 fn test_args_stores_coordinates_without_range_validation() {
     // Args layer doesn't validate coordinate ranges
     // This is intentional - validation happens in config layer
-    let args = common::create_args_with_coordinates(100.0, 200.0);
+    let args = create_args_with_coordinates(100.0, 200.0);
     assert!(validate_args(&args).is_ok(), "Args layer accepts any coordinates");
 }
