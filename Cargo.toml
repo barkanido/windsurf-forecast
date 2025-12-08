@@ -3,6 +3,10 @@ name = "windsurf-forecast"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "windsurf_forecast"
+path = "src/lib.rs"
+
 [dependencies]
 reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
@@ -21,6 +25,11 @@ iana-time-zone = "0.1"
 tzf-rs = "0.4"
 async-trait = "0.1"
 inventory = "0.3"
+
+[dev-dependencies]
+httpmock = "0.7"
+serial_test = "3.0"
+tempfile = "3.8"
 
 [profile.release]
 opt-level = 3

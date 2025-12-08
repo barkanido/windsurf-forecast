@@ -101,12 +101,43 @@ All code changes MUST follow an iterative testing workflow before final validati
    - Or add to TODO task list for later resolution if complex
    - Document rationale if intentionally ignoring specific clippy suggestions
 
-4. **`cargo run --release`** - ONLY for final end-to-end testing
+4. **`cargo test`** - MUST run and pass for all changes
+   - Run unit tests with `cargo test --lib --tests` (fast, <1 second)
+   - Run specific test files with `cargo test --test <test_name>`
+   - All 131 unit tests must pass before proceeding
+   - Test suite execution time MUST remain under 10 seconds
+
+5. **`cargo run --release`** - ONLY for final end-to-end testing
    - Use `--release` flag exclusively for production-like validation
    - Run after all development testing passes
    - Validate complete user workflows before deployment
 
-**Rationale**: This workflow balances development speed with code quality. Debug builds enable rapid iteration, while strict quality gates (check, clippy) catch issues early. The `--release` flag's optimization overhead is reserved for final validation, preventing slow feedback loops during active development.
+**Test Infrastructure** (131 comprehensive tests):
+- [`tests/args_test.rs`](../../tests/args_test.rs) - CLI argument validation (17 tests)
+- [`tests/timezone_test.rs`](../../tests/timezone_test.rs) - Timezone conversion (18 tests)
+- [`tests/provider_registry_test.rs`](../../tests/provider_registry_test.rs) - Provider discovery (15 tests)
+- [`tests/config_test.rs`](../../tests/config_test.rs) - Configuration management (24 tests)
+- [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs) - StormGlass provider (28 tests)
+- [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs) - OpenWeatherMap provider (29 tests)
+- [`tests/common/mod.rs`](../../tests/common/mod.rs) - Test helpers and mock data builders
+
+**Coverage Requirements**:
+- Core modules: >80% line coverage target
+- [`forecast_provider.rs`](../../src/forecast_provider.rs): 100% coverage achieved
+- [`provider_registry.rs`](../../src/provider_registry.rs): 84.78% coverage achieved
+- All documented unit conversions: 100% test coverage required
+
+**Coverage Reporting** (separate from test execution):
+```bash
+# Generate HTML coverage report (slower, for validation)
+cargo llvm-cov --html
+# View at: target/llvm-cov/html/index.html
+
+# Generate CI-friendly coverage report
+cargo llvm-cov --lcov --output-path coverage.lcov
+```
+
+**Rationale**: This workflow balances development speed with code quality. Debug builds enable rapid iteration, while strict quality gates (check, clippy, test) catch issues early. Comprehensive unit tests verify behavior and prevent regressions. The `--release` flag's optimization overhead is reserved for final validation, preventing slow feedback loops during active development.
 
 ## Architecture Standards
 

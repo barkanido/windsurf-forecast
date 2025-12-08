@@ -26,9 +26,9 @@
 
 **Purpose**: Initialize test dependencies and basic test infrastructure
 
-- [ ] T001 Add test dependencies to [`Cargo.toml`](../../Cargo.toml): httpmock 0.7, serial_test 3.0, tempfile 3.8 in [dev-dependencies]
-- [ ] T002 Install cargo-llvm-cov globally for coverage reporting: `cargo install cargo-llvm-cov`
-- [ ] T003 [P] Create [`tests/`](../../tests/) directory structure for integration-style unit tests
+- [x] T001 Add test dependencies to [`Cargo.toml`](../../Cargo.toml): httpmock 0.7, serial_test 3.0, tempfile 3.8 in [dev-dependencies]
+- [x] T002 Install cargo-llvm-cov globally for coverage reporting: `cargo install cargo-llvm-cov`
+- [x] T003 [P] Create [`tests/`](../../tests/) directory structure for integration-style unit tests
 
 **Testing Workflow** (Constitution VI - apply for ALL test code):
 - Run `cargo check` to verify compilation
@@ -45,11 +45,11 @@
 
 **⚠️ CRITICAL**: No user story test implementation can begin until this phase is complete
 
-- [ ] T004 Create test helper module for mock data structures in [`tests/common/mod.rs`](../../tests/common/mod.rs)
-- [ ] T005 [P] Implement helper function to create valid Args for testing in [`tests/common/mod.rs`](../../tests/common/mod.rs)
-- [ ] T006 [P] Implement helper function to create temporary config files using tempfile crate in [`tests/common/mod.rs`](../../tests/common/mod.rs)
-- [ ] T007 [P] Implement mock StormGlass API response builders in [`tests/common/mod.rs`](../../tests/common/mod.rs)
-- [ ] T008 [P] Implement mock OpenWeatherMap API response builders in [`tests/common/mod.rs`](../../tests/common/mod.rs)
+- [x] T004 Create test helper module for mock data structures in [`tests/common/mod.rs`](../../tests/common/mod.rs)
+- [x] T005 [P] Implement helper function to create valid Args for testing in [`tests/common/mod.rs`](../../tests/common/mod.rs)
+- [x] T006 [P] Implement helper function to create temporary config files using tempfile crate in [`tests/common/mod.rs`](../../tests/common/mod.rs)
+- [x] T007 [P] Implement mock StormGlass API response builders in [`tests/common/mod.rs`](../../tests/common/mod.rs)
+- [x] T008 [P] Implement mock OpenWeatherMap API response builders in [`tests/common/mod.rs`](../../tests/common/mod.rs)
 
 **Checkpoint**: Test infrastructure ready - user story test implementation can now begin in parallel
 
@@ -65,37 +65,37 @@
 
 #### CLI Argument Tests
 
-- [ ] T009 [P] [US1] Create [`tests/args_test.rs`](../../tests/args_test.rs) with test module structure
-- [ ] T010 [P] [US1] Test valid argument combinations in [`tests/args_test.rs`](../../tests/args_test.rs): provider + days_ahead + coordinates
-- [ ] T011 [P] [US1] Test boundary condition (days_ahead + first_day_offset = 7) in [`tests/args_test.rs`](../../tests/args_test.rs)
-- [ ] T012 [P] [US1] Test constraint violation (days_ahead + first_day_offset > 7) returns error in [`tests/args_test.rs`](../../tests/args_test.rs)
-- [ ] T013 [P] [US1] Test days_ahead = 0 returns error in [`tests/args_test.rs`](../../tests/args_test.rs)
-- [ ] T014 [P] [US1] Test unknown provider name returns error in [`tests/args_test.rs`](../../tests/args_test.rs)
-- [ ] T015 [P] [US1] Test invalid latitude (>90 or <-90) returns error in [`tests/args_test.rs`](../../tests/args_test.rs)
-- [ ] T016 [P] [US1] Test invalid longitude (>180 or <-180) returns error in [`tests/args_test.rs`](../../tests/args_test.rs)
-- [ ] T017 [P] [US1] Test error messages are actionable (mention constraint values, parameter names) in [`tests/args_test.rs`](../../tests/args_test.rs)
+- [x] T009 [P] [US1] Create [`tests/args_test.rs`](../../tests/args_test.rs) with test module structure
+- [x] T010 [P] [US1] Test valid argument combinations in [`tests/args_test.rs`](../../tests/args_test.rs): provider + days_ahead + coordinates
+- [x] T011 [P] [US1] Test boundary condition (days_ahead + first_day_offset = 7) in [`tests/args_test.rs`](../../tests/args_test.rs)
+- [x] T012 [P] [US1] Test constraint violation (days_ahead + first_day_offset > 7) returns error in [`tests/args_test.rs`](../../tests/args_test.rs)
+- [x] T013 [P] [US1] Test days_ahead = 0 returns error in [`tests/args_test.rs`](../../tests/args_test.rs)
+- [x] T014 [P] [US1] Test unknown provider name returns error in [`tests/args_test.rs`](../../tests/args_test.rs)
+- [x] T015 [P] [US1] Test invalid latitude (>90 or <-90) returns error in [`tests/args_test.rs`](../../tests/args_test.rs)
+- [x] T016 [P] [US1] Test invalid longitude (>180 or <-180) returns error in [`tests/args_test.rs`](../../tests/args_test.rs)
+- [x] T017 [P] [US1] Test error messages are actionable (mention constraint values, parameter names) in [`tests/args_test.rs`](../../tests/args_test.rs)
 
 #### Timezone Conversion Tests
 
-- [ ] T018 [P] [US1] Create [`tests/timezone_test.rs`](../../tests/timezone_test.rs) with test module structure
-- [ ] T019 [P] [US1] Test UtcTimestamp::from_rfc3339() with valid RFC3339 format in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
-- [ ] T020 [P] [US1] Test UtcTimestamp::from_rfc3339() with timezone offset normalizes to UTC in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
-- [ ] T021 [P] [US1] Test UtcTimestamp::from_rfc3339() rejects invalid formats in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
-- [ ] T022 [P] [US1] Test convert_timezone() UTC to Asia/Jerusalem (+2 hours) in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
-- [ ] T023 [P] [US1] Test convert_timezone() UTC to America/New_York (-5 hours) in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
-- [ ] T024 [P] [US1] Test convert_timezone() UTC to UTC preserves time in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
-- [ ] T025 [P] [US1] Test LocalTimestamp serialization format is "YYYY-MM-DD HH:MM" (not ISO 8601) in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
-- [ ] T026 [P] [US1] Test WeatherDataPoint timestamp serialization uses correct format in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
-- [ ] T027 [P] [US1] Test invalid timezone identifiers return errors with actionable messages in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
-- [ ] T028 [P] [US1] Test timezone precedence: CLI > config > default UTC in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
+- [x] T018 [P] [US1] Create [`tests/timezone_test.rs`](../../tests/timezone_test.rs) with test module structure
+- [x] T019 [P] [US1] Test UtcTimestamp::from_rfc3339() with valid RFC3339 format in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
+- [x] T020 [P] [US1] Test UtcTimestamp::from_rfc3339() with timezone offset normalizes to UTC in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
+- [x] T021 [P] [US1] Test UtcTimestamp::from_rfc3339() rejects invalid formats in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
+- [x] T022 [P] [US1] Test convert_timezone() UTC to Asia/Jerusalem (+2 hours) in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
+- [x] T023 [P] [US1] Test convert_timezone() UTC to America/New_York (-5 hours) in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
+- [x] T024 [P] [US1] Test convert_timezone() UTC to UTC preserves time in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
+- [x] T025 [P] [US1] Test LocalTimestamp serialization format is "YYYY-MM-DD HH:MM" (not ISO 8601) in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
+- [x] T026 [P] [US1] Test WeatherDataPoint timestamp serialization uses correct format in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
+- [x] T027 [P] [US1] Test invalid timezone identifiers return errors with actionable messages in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
+- [x] T028 [P] [US1] Test timezone precedence: CLI > config > default UTC in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
 
 #### Provider Registry Tests
 
-- [ ] T029 [P] [US1] Create [`tests/provider_registry_test.rs`](../../tests/provider_registry_test.rs) with test module structure
-- [ ] T030 [P] [US1] Test provider discovery finds all registered providers in [`tests/provider_registry_test.rs`](../../tests/provider_registry_test.rs)
-- [ ] T031 [P] [US1] Test provider instantiation succeeds for valid provider names in [`tests/provider_registry_test.rs`](../../tests/provider_registry_test.rs)
-- [ ] T032 [P] [US1] Test provider validation rejects unknown provider names in [`tests/provider_registry_test.rs`](../../tests/provider_registry_test.rs)
-- [ ] T033 [P] [US1] Test duplicate provider detection (if multiple providers registered with same name) in [`tests/provider_registry_test.rs`](../../tests/provider_registry_test.rs)
+- [x] T029 [P] [US1] Create [`tests/provider_registry_test.rs`](../../tests/provider_registry_test.rs) with test module structure
+- [x] T030 [P] [US1] Test provider discovery finds all registered providers in [`tests/provider_registry_test.rs`](../../tests/provider_registry_test.rs)
+- [x] T031 [P] [US1] Test provider instantiation succeeds for valid provider names in [`tests/provider_registry_test.rs`](../../tests/provider_registry_test.rs)
+- [x] T032 [P] [US1] Test provider validation rejects unknown provider names in [`tests/provider_registry_test.rs`](../../tests/provider_registry_test.rs)
+- [x] T033 [P] [US1] Test duplicate provider detection (if multiple providers registered with same name) in [`tests/provider_registry_test.rs`](../../tests/provider_registry_test.rs)
 
 **Checkpoint**: Core business logic tests complete - verify `cargo test` passes for US1 tests and coverage >80% for core modules
 
@@ -111,26 +111,26 @@
 
 #### StormGlass Provider Tests
 
-- [ ] T034 [P] [US2] Create [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs) with async test module structure
-- [ ] T035 [P] [US2] Test wind speed conversion m/s to knots (×1.94384) in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
-- [ ] T036 [P] [US2] Test complete API response with all fields populated in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
-- [ ] T037 [P] [US2] Test partial API response with missing optional fields (handles None values) in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
-- [ ] T038 [P] [US2] Test timestamp parsing and timezone conversion in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
-- [ ] T039 [P] [US2] Test HTTP 401 Unauthorized error handling with actionable message in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
-- [ ] T040 [P] [US2] Test HTTP 402 Payment Required (quota exceeded) error handling in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
-- [ ] T041 [P] [US2] Test HTTP 403 Forbidden error handling in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
-- [ ] T042 [P] [US2] Test HTTP 500 Internal Server Error handling in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
-- [ ] T043 [P] [US2] Test malformed JSON response error handling in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
+- [x] T034 [P] [US2] Create [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs) with async test module structure
+- [x] T035 [P] [US2] Test wind speed conversion m/s to knots (×1.94384) in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
+- [x] T036 [P] [US2] Test complete API response with all fields populated in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
+- [x] T037 [P] [US2] Test partial API response with missing optional fields (handles None values) in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
+- [x] T038 [P] [US2] Test timestamp parsing and timezone conversion in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
+- [x] T039 [P] [US2] Test HTTP 401 Unauthorized error handling with actionable message in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
+- [x] T040 [P] [US2] Test HTTP 402 Payment Required (quota exceeded) error handling in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
+- [x] T041 [P] [US2] Test HTTP 403 Forbidden error handling in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
+- [x] T042 [P] [US2] Test HTTP 500 Internal Server Error handling in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
+- [x] T043 [P] [US2] Test malformed JSON response error handling in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
 
 #### OpenWeatherMap Provider Tests
 
-- [ ] T044 [P] [US2] Create [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs) with async test module structure
-- [ ] T045 [P] [US2] Test wind speed remains in m/s (NO conversion) in [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs)
-- [ ] T046 [P] [US2] Test complete API response with all fields populated in [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs)
-- [ ] T047 [P] [US2] Test API response without gust field (optional field handling) in [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs)
-- [ ] T048 [P] [US2] Test Unix timestamp parsing and timezone conversion in [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs)
-- [ ] T049 [P] [US2] Test HTTP error handling (401, 500, etc.) in [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs)
-- [ ] T050 [P] [US2] Test malformed JSON response error handling in [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs)
+- [x] T044 [P] [US2] Create [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs) with async test module structure
+- [x] T045 [P] [US2] Test wind speed remains in m/s (NO conversion) in [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs)
+- [x] T046 [P] [US2] Test complete API response with all fields populated in [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs)
+- [x] T047 [P] [US2] Test API response without gust field (optional field handling) in [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs)
+- [x] T048 [P] [US2] Test Unix timestamp parsing and timezone conversion in [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs)
+- [x] T049 [P] [US2] Test HTTP error handling (401, 500, etc.) in [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs)
+- [x] T050 [P] [US2] Test malformed JSON response error handling in [`tests/openweathermap_test.rs`](../../tests/openweathermap_test.rs)
 
 **Checkpoint**: Provider transformation tests complete - verify 100% of documented unit conversions and field mappings are tested
 
@@ -146,24 +146,24 @@
 
 #### Configuration File Tests
 
-- [ ] T051 [P] [US3] Create [`tests/config_test.rs`](../../tests/config_test.rs) with test module structure
-- [ ] T052 [P] [US3] Test load_config() from valid TOML file in [`tests/config_test.rs`](../../tests/config_test.rs)
-- [ ] T053 [P] [US3] Test load_config() with missing file creates default config in [`tests/config_test.rs`](../../tests/config_test.rs)
-- [ ] T054 [P] [US3] Test load_config() with invalid TOML returns error in [`tests/config_test.rs`](../../tests/config_test.rs)
-- [ ] T055 [P] [US3] Test CLI coordinates override config file coordinates in [`tests/config_test.rs`](../../tests/config_test.rs)
-- [ ] T056 [P] [US3] Test CLI timezone overrides config file timezone in [`tests/config_test.rs`](../../tests/config_test.rs)
-- [ ] T057 [P] [US3] Test config file coordinates used when CLI doesn't provide them in [`tests/config_test.rs`](../../tests/config_test.rs)
-- [ ] T058 [P] [US3] Test save_config() persists to file correctly in [`tests/config_test.rs`](../../tests/config_test.rs)
-- [ ] T059 [P] [US3] Test save_config() then load_config() roundtrip preserves values in [`tests/config_test.rs`](../../tests/config_test.rs)
-- [ ] T060 [P] [US3] Test coordinate validation (lat: -90 to 90, lng: -180 to 180) in [`tests/config_test.rs`](../../tests/config_test.rs)
-- [ ] T061 [P] [US3] Test missing coordinates error message is actionable (mentions --lat, config file) in [`tests/config_test.rs`](../../tests/config_test.rs)
-- [ ] T062 [P] [US3] Test default config path uses home directory with correct filename in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T051 [P] [US3] Create [`tests/config_test.rs`](../../tests/config_test.rs) with test module structure
+- [x] T052 [P] [US3] Test load_config() from valid TOML file in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T053 [P] [US3] Test load_config() with missing file creates default config in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T054 [P] [US3] Test load_config() with invalid TOML returns error in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T055 [P] [US3] Test CLI coordinates override config file coordinates in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T056 [P] [US3] Test CLI timezone overrides config file timezone in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T057 [P] [US3] Test config file coordinates used when CLI doesn't provide them in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T058 [P] [US3] Test save_config() persists to file correctly in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T059 [P] [US3] Test save_config() then load_config() roundtrip preserves values in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T060 [P] [US3] Test coordinate validation (lat: -90 to 90, lng: -180 to 180) in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T061 [P] [US3] Test missing coordinates error message is actionable (mentions --lat, config file) in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T062 [P] [US3] Test default config path uses home directory with correct filename in [`tests/config_test.rs`](../../tests/config_test.rs)
 
 #### Environment Variable Tests (Serial Execution Required)
 
-- [ ] T063 [US3] Test missing API key error with #[serial] attribute in [`tests/config_test.rs`](../../tests/config_test.rs) or separate file
-- [ ] T064 [US3] Test API key retrieval from environment variable with #[serial] in [`tests/config_test.rs`](../../tests/config_test.rs)
-- [ ] T065 [US3] Test environment variable cleanup after tests in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T063 [US3] Test missing API key error with #[serial] attribute in [`tests/config_test.rs`](../../tests/config_test.rs) or separate file
+- [x] T064 [US3] Test API key retrieval from environment variable with #[serial] in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T065 [US3] Test environment variable cleanup after tests in [`tests/config_test.rs`](../../tests/config_test.rs)
 
 **Checkpoint**: Configuration management tests complete - verify precedence rules and validation work correctly
 
@@ -179,14 +179,14 @@
 
 #### Error Message Quality Tests
 
-- [ ] T066 [P] [US4] Test invalid CLI arguments error message explains what's wrong and how to fix in [`tests/args_test.rs`](../../tests/args_test.rs)
-- [ ] T067 [P] [US4] Test missing API key error mentions exact variable name to set in provider tests
-- [ ] T068 [P] [US4] Test invalid timezone error provides examples of valid timezone formats in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
-- [ ] T069 [P] [US4] Test coordinate validation error explains valid ranges in [`tests/config_test.rs`](../../tests/config_test.rs)
-- [ ] T070 [P] [US4] Test date range constraint error explains 7-day limit in [`tests/args_test.rs`](../../tests/args_test.rs)
-- [ ] T071 [P] [US4] Test HTTP 401 error suggests checking API key in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
-- [ ] T072 [P] [US4] Test HTTP 402 error explains quota exceeded in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
-- [ ] T073 [P] [US4] Test network timeout error provides troubleshooting guidance in provider tests
+- [x] T066 [P] [US4] Test invalid CLI arguments error message explains what's wrong and how to fix in [`tests/args_test.rs`](../../tests/args_test.rs)
+- [x] T067 [P] [US4] Test missing API key error mentions exact variable name to set in provider tests
+- [x] T068 [P] [US4] Test invalid timezone error provides examples of valid timezone formats in [`tests/timezone_test.rs`](../../tests/timezone_test.rs)
+- [x] T069 [P] [US4] Test coordinate validation error explains valid ranges in [`tests/config_test.rs`](../../tests/config_test.rs)
+- [x] T070 [P] [US4] Test date range constraint error explains 7-day limit in [`tests/args_test.rs`](../../tests/args_test.rs)
+- [x] T071 [P] [US4] Test HTTP 401 error suggests checking API key in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
+- [x] T072 [P] [US4] Test HTTP 402 error explains quota exceeded in [`tests/stormglass_test.rs`](../../tests/stormglass_test.rs)
+- [x] T073 [P] [US4] Test network timeout error provides troubleshooting guidance in provider tests
 
 **Checkpoint**: Error handling tests complete - verify all user-facing errors have actionable messages
 
@@ -196,14 +196,14 @@
 
 **Purpose**: Coverage reporting, CI/CD integration, and documentation
 
-- [ ] T074 [P] Generate initial coverage report: `cargo llvm-cov --html` and verify >80% for core modules
-- [ ] T075 [P] Create GitHub Actions workflow file at [`.github/workflows/tests.yml`](../../.github/workflows/tests.yml) based on [`contracts/github-workflow-tests.yml`](contracts/github-workflow-tests.yml)
-- [ ] T076 [P] Update [`README.md`](../../README.md) with testing section: how to run tests, coverage requirements, development workflow
-- [ ] T077 [P] Update [`AGENTS.md`](../../AGENTS.md) with test execution commands and coverage instructions
-- [ ] T078 [P] Create [`tests/README.md`](../../tests/README.md) documenting test organization and conventions
-- [ ] T079 Validate [`quickstart.md`](quickstart.md) scenarios work correctly with implemented tests
-- [ ] T080 Run full test suite and ensure completion in <10 seconds: `time cargo test`
-- [ ] T081 Generate final coverage report and verify targets met: `cargo llvm-cov --summary-only`
+- [x] T074 [P] Generate initial coverage report: `cargo llvm-cov --html` and verify >80% for core modules
+- [x] T075 [P] Create GitHub Actions workflow file at [`.github/workflows/tests.yml`](../../.github/workflows/tests.yml) based on [`contracts/github-workflow-tests.yml`](contracts/github-workflow-tests.yml)
+- [x] T076 [P] Update [`README.md`](../../README.md) with testing section: how to run tests, coverage requirements, development workflow
+- [x] T077 [P] Update [`AGENTS.md`](../../AGENTS.md) with test execution commands and coverage instructions
+- [x] T078 [P] Create [`tests/README.md`](../../tests/README.md) documenting test organization and conventions
+- [x] T079 Validate [`quickstart.md`](quickstart.md) scenarios work correctly with implemented tests
+- [x] T080 Run full test suite and ensure completion in <10 seconds: `time cargo test`
+- [x] T081 Generate final coverage report and verify targets met: `cargo llvm-cov --summary-only`
 
 ---
 
