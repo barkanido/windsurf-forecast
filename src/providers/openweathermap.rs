@@ -1,4 +1,6 @@
-use crate::forecast_provider::{ForecastProvider, WeatherDataPoint, UtcTimestamp, convert_timezone};
+use crate::forecast_provider::{
+    convert_timezone, ForecastProvider, UtcTimestamp, WeatherDataPoint,
+};
 use crate::provider_registry::ProviderMetadata;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -15,14 +17,13 @@ struct RawWeatherResponse {
 #[derive(Debug, Deserialize)]
 struct RawHourlyData {
     dt: i64,
-    #[serde(rename = "temp")]
+    #[serde(rename = "feels_like")]
     air_temperature: f64,
     clouds: Option<f64>,
     wind_deg: Option<f64>,
     wind_gust: Option<f64>,
     wind_speed: Option<f64>,
 }
-
 
 pub struct OpenWeatherMapProvider {
     api_key: String,
@@ -37,7 +38,7 @@ impl OpenWeatherMapProvider {
         let utc_datetime = DateTime::<Utc>::from_timestamp(hour.dt, 0)
             .ok_or(anyhow::anyhow!("Could not parse timestamp"))?;
         let utc = UtcTimestamp(utc_datetime);
-        
+
         let local = convert_timezone(utc, target_tz)?;
 
         Ok(WeatherDataPoint {
@@ -100,19 +101,22 @@ impl ForecastProvider for OpenWeatherMapProvider {
             .context("Failed to connect to openweathermap API")?;
 
         let status = response.status();
+        let response_text = response
+            .text()
+            .await
+            .context("Failed to read response body")?;
 
         if !status.is_success() {
             return Err(anyhow::anyhow!(
                 "OpenWeatherMap API returned error status: {}, message: {}",
                 status.as_u16(),
-                response.text().await.unwrap_or_default()
+                response_text
             ));
         }
+        // print!("raw response\n{}", response_text);
 
-        let data = response
-            .json::<RawWeatherResponse>()
-            .await
-            .context("Failed to parse API response")?;
+        let data: RawWeatherResponse =
+            serde_json::from_str(&response_text).context("Failed to parse API response")?;
 
         let mut weather_points = Vec::with_capacity(data.hourly.len());
         for hour in data.hourly {
