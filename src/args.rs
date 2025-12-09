@@ -74,6 +74,11 @@ pub struct Args {
     /// Longitude for the forecast location
     #[arg(long, value_name = "LNG")]
     pub lng: Option<f64>,
+
+    /// Save configuration to file after successful execution
+    /// (Applies to provider, timezone, and coordinates)
+    #[arg(long)]
+    pub save: bool,
 }
 
 // ============================================================================

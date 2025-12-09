@@ -13,7 +13,7 @@ mod provider_registry;
 mod providers;
 
 use args::{Args, validate_args};
-use config::{load_config, save_config, validate_timezone_coordinates, pick_timezone_interactive, TimezoneConfig};
+use config::{pick_timezone_interactive, validate_timezone_coordinates};
 use forecast_provider::WeatherDataPoint;
 
 // ============================================================================
@@ -119,16 +119,12 @@ async fn main() {
 }
 
 async fn run() -> Result<()> {
-    // Load .env file if present
+    // Phase 1: Environment setup
     dotenv::dotenv().ok();
-
-    // Validate provider registry (check for duplicates)
     provider_registry::check_duplicates();
-
-    // Parse command line arguments
     let args = Args::parse();
-
-    // Handle --list-providers flag
+    
+    // Phase 2: Handle special flags (--list-providers, --pick-timezone)
     if args.list_providers {
         println!("Available weather providers:\n");
         for (name, description) in provider_registry::all_provider_descriptions() {
@@ -140,136 +136,96 @@ async fn run() -> Result<()> {
         return Ok(());
     }
 
-    // Handle interactive timezone picker
     if args.pick_timezone {
         let selected_tz = pick_timezone_interactive()?;
         
-        // Load existing config or create new one
-        let mut config = load_config(args.config.as_ref())?;
+        let mut config = config::load_config(args.config.as_ref())?;
         config.general.timezone = selected_tz.clone();
+        config::save_config(&config, args.config.as_ref())?;
         
-        // Save config
-        save_config(&config, args.config.as_ref())?;
-        
-        let config_path = if let Some(ref path) = args.config {
-            path.display().to_string()
-        } else {
-            config::get_default_config_path()?.display().to_string()
-        };
+        let config_path = args.config.as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|| config::get_default_config_path().unwrap().display().to_string());
         
         println!("✓ Timezone '{}' saved to config file: {}", selected_tz, config_path);
         return Ok(());
     }
-
-    // Load configuration file
-    let mut config = load_config(args.config.as_ref())?;
     
-    // Determine timezone source for display
-    let timezone_source = if args.timezone.is_some() {
-        "CLI argument"
-    } else if config.general.timezone != "UTC" {
-        "config file"
-    } else {
-        "default"
-    };
-
-    // Load timezone configuration with precedence: CLI > Config > default UTC
-    let timezone_config = TimezoneConfig::load_with_precedence(
-        args.timezone.clone(),
-        Some(config.general.timezone.clone())
-    )?;
-    timezone_config.display_default_warning();
-    
-    let timezone = timezone_config.timezone;
-    
-    // If timezone was specified via CLI, persist it to config
-    if let Some(ref tz_str) = args.timezone {
-        config.general.timezone = tz_str.clone();
-        save_config(&config, args.config.as_ref())?;
-        
-        let config_path = if let Some(ref path) = args.config {
-            path.display().to_string()
-        } else {
-            config::get_default_config_path()?.display().to_string()
-        };
-        eprintln!("✓ Timezone '{}' saved to config file: {}", tz_str, config_path);
-    }
-
-    // Validate all arguments
+    // Phase 3: Validate CLI arguments
     validate_args(&args)?;
-
-    // Create provider instance using registry
-    let provider = provider_registry::create_provider(&args.provider)?;
-
-    // Calculate start and end dates
+    
+    // Phase 4: Resolve configuration (SINGLE CALL to config module)
+    let resolved_config = config::resolve_from_args_and_file(&args)?;
+    
+    // Phase 5: Display configuration summary
+    eprintln!("\n📋 Configuration:");
+    eprintln!("   Provider: {}", resolved_config.provider);
+    eprintln!("   Days ahead: {}", resolved_config.days_ahead);
+    eprintln!("   First day offset: {}", resolved_config.first_day_offset);
+    eprintln!("   Timezone: {}", resolved_config.timezone.name());
+    eprintln!("   Coordinates: ({:.6}, {:.6})", resolved_config.lat, resolved_config.lng);
+    
+    let config_path_display = args.config.as_ref()
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| config::get_default_config_path().unwrap().display().to_string());
+    eprintln!("   Config file: {}", config_path_display);
+    eprintln!();
+    
+    // Validate timezone against coordinates
+    validate_timezone_coordinates(resolved_config.timezone, resolved_config.lat, resolved_config.lng);
+    
+    // Phase 6: Instantiate provider
+    let provider = provider_registry::create_provider(&resolved_config.provider)?;
+    
+    // Phase 7: Calculate date range
     let now = Utc::now();
-    let start = (now + chrono::Duration::days(args.first_day_offset as i64))
+    let start = (now + chrono::Duration::days(resolved_config.first_day_offset as i64))
         .date_naive()
         .and_hms_opt(0, 0, 0)
         .unwrap();
     let start = Utc.from_utc_datetime(&start);
 
-    let end = (now + chrono::Duration::days((args.first_day_offset + args.days_ahead - 1) as i64))
+    let end = (now + chrono::Duration::days((resolved_config.first_day_offset + resolved_config.days_ahead - 1) as i64))
         .date_naive()
         .and_hms_opt(23, 59, 59)
         .unwrap();
     let end = Utc.from_utc_datetime(&end);
-
-    // Get coordinates from CLI args or config file (CLI takes precedence)
-    let (lat, lng) = config::resolve_coordinates(args.lat, args.lng, &config)?;
     
-    // Determine coordinate source for display
-    let coord_source = if args.lat.is_some() && args.lng.is_some() {
-        "CLI arguments"
-    } else if args.lat.is_some() || args.lng.is_some() {
-        "mixed (CLI and config)"
-    } else {
-        "config file"
-    };
-
-    // Display all arguments and their origins
-    eprintln!("\n📋 Configuration:");
-    eprintln!("   Provider: {} (CLI argument)", args.provider);
-    eprintln!("   Days ahead: {} (CLI argument)", args.days_ahead);
-    eprintln!("   First day offset: {} (CLI argument)", args.first_day_offset);
-    eprintln!("   Timezone: {} ({})", timezone.name(), timezone_source);
-    eprintln!("   Coordinates: ({:.6}, {:.6}) ({})", lat, lng, coord_source);
+    // Phase 8: Fetch weather data
+    let weather_points = provider.fetch_weather_data(
+        start,
+        end,
+        resolved_config.lat,
+        resolved_config.lng,
+        resolved_config.timezone
+    ).await?;
     
-    let config_path_display = if let Some(ref path) = args.config {
-        path.display().to_string()
-    } else {
-        config::get_default_config_path()?.display().to_string()
-    };
-    eprintln!("   Config file: {}", config_path_display);
-    eprintln!();
-
-    // Validate timezone against coordinates
-    validate_timezone_coordinates(timezone, lat, lng);
-
-    // Fetch weather data using the provider with target timezone
-    let weather_points = provider.fetch_weather_data(start, end, lat, lng, timezone).await?;
-
-    // Create response with weather data - no transformation needed
-    // WeatherDataPoint now serializes directly with proper formatting
+    // Phase 9: Create response and write output
     let transformed_data = TransformedWeatherResponse {
         hours: weather_points,
-        meta: create_meta(lat, lng, start, end, provider.name(), timezone),
+        meta: create_meta(
+            resolved_config.lat,
+            resolved_config.lng,
+            start,
+            end,
+            provider.name(),
+            resolved_config.timezone
+        ),
     };
 
-    // Generate filename
     let filename = format!(
         "weather_data_{}d_{}.json",
-        args.days_ahead,
+        resolved_config.days_ahead,
         start.format("%y%m%d")
     );
 
-    // Write to file
     write_weather_json(&transformed_data, &filename)?;
-    
-    // Print the data
-    // println!("{}", serde_json::to_string_pretty(&transformed_data)?);
-    
     println!("Loaded {} hourly data points from file.", transformed_data.hours.len());
+    
+    // Phase 10: Persistence (if --save flag provided)
+    if args.save {
+        config::save_config_from_resolved(&resolved_config, args.config.as_ref())?;
+    }
 
     Ok(())
 }

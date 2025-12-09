@@ -33,6 +33,7 @@ pub fn create_valid_args() -> Args {
         config: None,
         lat: Some(32.486722),
         lng: Some(34.888722),
+        save: false,
     }
 }
 
