@@ -77,6 +77,11 @@ fn create_units_map(provider_name: &str) -> HashMap<String, String> {
             "Direction of wind at 10m above ground. 0° indicates wind coming from north"
                 .to_string(),
         ),
+        ("cloudCover", "Total cloud coverage in percent".to_string()),
+        (
+            "precipitation",
+            "TMean precipitation in kg/m²/h = mm/h".to_string(),
+        ),
     ]
     .iter()
     .map(|(k, v)| (k.to_string(), v.clone()))

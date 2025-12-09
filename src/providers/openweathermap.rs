@@ -9,32 +9,21 @@ use std::env;
 
 #[derive(Debug, Deserialize)]
 struct RawWeatherResponse {
-    list: Vec<RawHourlyData>,
+    hourly: Vec<RawHourlyData>,
 }
 
 #[derive(Debug, Deserialize)]
 struct RawHourlyData {
     dt: i64,
-    main: MainData,
-    wind: WindData,
-    #[allow(dead_code)]  // Part of API response but not used
-    timezone: i64,
-}
-
-#[derive(Debug, Deserialize)]
-struct MainData {
     #[serde(rename = "temp")]
     air_temperature: f64,
+    clouds: Option<f64>,
+    wind_deg: Option<f64>,
+    wind_gust: Option<f64>,
+    wind_speed: Option<f64>,
 }
 
-#[derive(Debug, Deserialize)]
-struct WindData {
-    #[serde(rename = "speed")]
-    wind_speed: Option<f64>,
-    #[serde(rename = "deg")]
-    wind_direction: Option<f64>,
-    gust: Option<f64>,
-}
+
 pub struct OpenWeatherMapProvider {
     api_key: String,
 }
@@ -53,14 +42,16 @@ impl OpenWeatherMapProvider {
 
         Ok(WeatherDataPoint {
             time: local,
-            air_temperature: Some(hour.main.air_temperature),
-            wind_speed: hour.wind.wind_speed,
-            wind_direction: hour.wind.wind_direction,
-            gust: hour.wind.gust,
+            air_temperature: Some(hour.air_temperature),
+            wind_speed: hour.wind_speed,
+            wind_direction: hour.wind_deg,
+            gust: hour.wind_gust,
             swell_height: None,
             swell_period: None,
             swell_direction: None,
             water_temperature: None,
+            cloud_cover: hour.clouds,
+            precipitation: None, // TODO: Map precipitation if available
         })
     }
 }
@@ -95,7 +86,7 @@ impl ForecastProvider for OpenWeatherMapProvider {
         );
         let client = reqwest::Client::new();
         let req = client
-            .get("https://pro.openweathermap.org/data/2.5/forecast/hourly")
+            .get("https://api.openweathermap.org/data/3.0/onecall")
             .query(&[
                 ("lat", &lat.to_string()),
                 ("lon", &lng.to_string()),
@@ -103,7 +94,6 @@ impl ForecastProvider for OpenWeatherMapProvider {
                 ("units", &"metric".to_string()),
                 ("mode", &"json".to_string()),
             ]);
-        println!("{:#?}", req);
         let response = req
             .send()
             .await
@@ -124,8 +114,8 @@ impl ForecastProvider for OpenWeatherMapProvider {
             .await
             .context("Failed to parse API response")?;
 
-        let mut weather_points = Vec::with_capacity(data.list.len());
-        for hour in data.list {
+        let mut weather_points = Vec::with_capacity(data.hourly.len());
+        for hour in data.hourly {
             weather_points.push(Self::transform_hour(hour, target_tz)?);
         }
 

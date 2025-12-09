@@ -97,6 +97,12 @@ pub struct WeatherDataPoint {
     
     #[serde(rename = "waterTemperature", skip_serializing_if = "Option::is_none")]
     pub water_temperature: Option<f64>,
+
+    #[serde(rename = "cloudCover", skip_serializing_if = "Option::is_none")]
+    pub cloud_cover: Option<f64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub precipitation: Option<f64>,
 }
 
 /// Trait that all weather forecast providers must implement

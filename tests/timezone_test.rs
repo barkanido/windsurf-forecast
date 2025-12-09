@@ -126,6 +126,8 @@ fn test_weather_data_point_timestamp_serialization() {
         swell_period: None,
         swell_direction: None,
         water_temperature: None,
+        cloud_cover: None,
+        precipitation: None,
     };
     
     let json = serde_json::to_string(&data_point).unwrap();

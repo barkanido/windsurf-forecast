@@ -7,7 +7,9 @@ use serde::Deserialize;
 use std::env;
 use thiserror::Error;
 
-use crate::forecast_provider::{ForecastProvider, WeatherDataPoint, UtcTimestamp, convert_timezone};
+use crate::forecast_provider::{
+    convert_timezone, ForecastProvider, UtcTimestamp, WeatherDataPoint,
+};
 use crate::provider_registry::ProviderMetadata;
 
 // ============================================================================
@@ -71,6 +73,9 @@ struct RawHourlyData {
     wind_direction: Option<SourceData>,
     #[serde(rename = "windSpeed")]
     wind_speed: Option<SourceData>,
+    #[serde(rename = "cloudCover")]
+    cloud_cover: Option<SourceData>,
+    precipitation: Option<SourceData>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -95,9 +100,8 @@ impl StormGlassProvider {
     const MS_TO_KNOTS: f64 = 1.94384;
 
     fn transform_hour(hour: RawHourlyData, target_tz: Tz) -> Result<WeatherDataPoint> {
-        let utc = UtcTimestamp::from_rfc3339(&hour.time)
-            .context("Failed to parse timestamp")?;
-        
+        let utc = UtcTimestamp::from_rfc3339(&hour.time).context("Failed to parse timestamp")?;
+
         let local = convert_timezone(utc, target_tz)?;
 
         Ok(WeatherDataPoint {
@@ -110,6 +114,8 @@ impl StormGlassProvider {
             swell_period: hour.swell_period.map(|s| s.sg),
             swell_direction: hour.swell_direction.map(|s| s.sg),
             water_temperature: hour.water_temperature.map(|s| s.sg),
+            cloud_cover: hour.cloud_cover.map(|s| s.sg),
+            precipitation: hour.precipitation.map(|s| s.sg),
         })
     }
 }
@@ -144,6 +150,8 @@ impl ForecastProvider for StormGlassProvider {
             "waterTemperature",
             "windDirection",
             "windSpeed",
+            "cloudCover",
+            "precipitation",
         ];
 
         println!(
