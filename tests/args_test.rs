@@ -10,19 +10,15 @@ use windsurf_forecast::test_utils::*;
 
 #[test]
 fn test_valid_argument_combinations() {
-    // Test with default values
     let args = create_valid_args();
     assert!(validate_args(&args).is_ok());
 
-    // Test with explicit coordinates
     let args = create_args_with_coordinates(40.7128, -74.0060);
     assert!(validate_args(&args).is_ok());
 
-    // Test with different provider
     let args = create_args_with_provider("openweathermap");
     assert!(validate_args(&args).is_ok());
 
-    // Test with custom timezone
     let args = create_args_with_timezone("America/New_York");
     assert!(validate_args(&args).is_ok());
 }
@@ -42,7 +38,6 @@ fn test_boundary_condition_days_ahead_plus_offset_equals_7() {
 
 #[test]
 fn test_constraint_violation_exceeds_7_days() {
-    // Should fail when days_ahead + first_day_offset > 7
     let args = create_args_with_days(5, 3);
     let result = validate_args(&args);
     assert!(result.is_err(), "5 + 3 = 8 should fail");
@@ -53,7 +48,6 @@ fn test_constraint_violation_exceeds_7_days() {
     assert!(err_msg.contains("3"));
     assert!(err_msg.contains("8"));
 
-    // Another boundary violation
     let args = create_args_with_days(7, 1);
     let result = validate_args(&args);
     assert!(result.is_err(), "7 + 1 = 8 should fail");
@@ -125,7 +119,6 @@ fn test_unknown_provider_returns_error() {
 
 #[test]
 fn test_known_providers_validate_successfully() {
-    // Test that known providers pass validation
     assert!(validate_provider("stormglass").is_ok());
     assert!(validate_provider("openweathermap").is_ok());
 }
@@ -138,7 +131,6 @@ fn test_known_providers_validate_successfully() {
 
 #[test]
 fn test_args_accepts_valid_latitude_range() {
-    // Valid latitude range: -90 to 90
     let args = create_args_with_coordinates(90.0, 0.0);
     assert!(validate_args(&args).is_ok());
 
@@ -151,7 +143,6 @@ fn test_args_accepts_valid_latitude_range() {
 
 #[test]
 fn test_args_accepts_valid_longitude_range() {
-    // Valid longitude range: -180 to 180
     let args = create_args_with_coordinates(0.0, 180.0);
     assert!(validate_args(&args).is_ok());
 
@@ -166,7 +157,6 @@ fn test_args_accepts_valid_longitude_range() {
 // Args layer just stores the values
 #[test]
 fn test_args_stores_coordinates_without_range_validation() {
-    // Args layer doesn't validate coordinate ranges
     // This is intentional - validation happens in config layer
     let args = create_args_with_coordinates(100.0, 200.0);
     assert!(validate_args(&args).is_ok(), "Args layer accepts any coordinates");

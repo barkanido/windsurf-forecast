@@ -14,7 +14,7 @@ struct RawWeatherResponse {
 
 #[derive(Debug, Deserialize)]
 struct RawHourlyData {
-    dt: i64, //unix timestamp, UTC
+    dt: i64,
     main: MainData,
     wind: WindData,
     #[allow(dead_code)]  // Part of API response but not used
@@ -24,16 +24,16 @@ struct RawHourlyData {
 #[derive(Debug, Deserialize)]
 struct MainData {
     #[serde(rename = "temp")]
-    air_temperature: f64, //celsius
+    air_temperature: f64,
 }
 
 #[derive(Debug, Deserialize)]
 struct WindData {
     #[serde(rename = "speed")]
-    wind_speed: Option<f64>, //m/s
+    wind_speed: Option<f64>,
     #[serde(rename = "deg")]
     wind_direction: Option<f64>,
-    gust: Option<f64>, //m/s
+    gust: Option<f64>,
 }
 pub struct OpenWeatherMapProvider {
     api_key: String,
@@ -45,12 +45,10 @@ impl OpenWeatherMapProvider {
     }
 
     fn transform_hour(hour: RawHourlyData, target_tz: Tz) -> Result<WeatherDataPoint> {
-        // Parse Unix timestamp as UTC
         let utc_datetime = DateTime::<Utc>::from_timestamp(hour.dt, 0)
             .ok_or(anyhow::anyhow!("Could not parse timestamp"))?;
         let utc = UtcTimestamp(utc_datetime);
         
-        // Convert to target timezone
         let local = convert_timezone(utc, target_tz)?;
 
         Ok(WeatherDataPoint {
@@ -126,7 +124,6 @@ impl ForecastProvider for OpenWeatherMapProvider {
             .await
             .context("Failed to parse API response")?;
 
-        // Transform all hourly data
         let mut weather_points = Vec::with_capacity(data.list.len());
         for hour in data.list {
             weather_points.push(Self::transform_hour(hour, target_tz)?);

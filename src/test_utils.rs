@@ -116,7 +116,6 @@ pub fn mock_stormglass_minimal_response() -> serde_json::Value {
     })
 }
 
-/// Create a StormGlass response with some optional fields missing (None)
 pub fn mock_stormglass_partial_response() -> serde_json::Value {
     json!({
         "hours": [
@@ -125,7 +124,6 @@ pub fn mock_stormglass_partial_response() -> serde_json::Value {
                 "airTemperature": { "sg": 22.5 },
                 "windSpeed": { "sg": 5.2 },
                 "windDirection": { "sg": 270.0 }
-                // Note: Missing gust, swell data, and water temperature
             }
         ]
     })
@@ -193,7 +191,6 @@ pub fn mock_openweathermap_minimal_response() -> serde_json::Value {
     })
 }
 
-/// Create an OpenWeatherMap response without gust field
 pub fn mock_openweathermap_no_gust() -> serde_json::Value {
     json!({
         "list": [
@@ -205,7 +202,6 @@ pub fn mock_openweathermap_no_gust() -> serde_json::Value {
                 "wind": {
                     "speed": 5.2,
                     "deg": 270.0
-                    // Note: No gust field
                 },
                 "timezone": 0
             }

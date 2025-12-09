@@ -43,11 +43,10 @@ struct TransformedWeatherResponse {
 // ============================================================================
 
 fn create_units_map(provider_name: &str) -> HashMap<String, String> {
-    // Determine wind speed units based on provider
     let wind_unit = match provider_name {
         "stormglass" => "knots",
         "openweathermap" => "m/s",
-        _ => "m/s", // Default to m/s for unknown providers
+        _ => "m/s",
     };
     
     [
@@ -119,12 +118,10 @@ async fn main() {
 }
 
 async fn run() -> Result<()> {
-    // Phase 1: Environment setup
     dotenv::dotenv().ok();
     provider_registry::check_duplicates();
     let args = Args::parse();
     
-    // Phase 2: Handle special flags (--list-providers, --pick-timezone)
     if args.list_providers {
         println!("Available weather providers:\n");
         for (name, description) in provider_registry::all_provider_descriptions() {
@@ -151,13 +148,10 @@ async fn run() -> Result<()> {
         return Ok(());
     }
     
-    // Phase 3: Validate CLI arguments
     validate_args(&args)?;
     
-    // Phase 4: Resolve configuration (SINGLE CALL to config module)
     let resolved_config = config::resolve_from_args_and_file(&args)?;
     
-    // Phase 5: Display configuration summary
     eprintln!("\n📋 Configuration:");
     eprintln!("   Provider: {}", resolved_config.provider);
     eprintln!("   Days ahead: {}", resolved_config.days_ahead);
@@ -174,10 +168,8 @@ async fn run() -> Result<()> {
     // Validate timezone against coordinates
     validate_timezone_coordinates(resolved_config.timezone, resolved_config.lat, resolved_config.lng);
     
-    // Phase 6: Instantiate provider
     let provider = provider_registry::create_provider(&resolved_config.provider)?;
     
-    // Phase 7: Calculate date range
     let now = Utc::now();
     let start = (now + chrono::Duration::days(resolved_config.first_day_offset as i64))
         .date_naive()
@@ -191,7 +183,6 @@ async fn run() -> Result<()> {
         .unwrap();
     let end = Utc.from_utc_datetime(&end);
     
-    // Phase 8: Fetch weather data
     let weather_points = provider.fetch_weather_data(
         start,
         end,
@@ -200,7 +191,6 @@ async fn run() -> Result<()> {
         resolved_config.timezone
     ).await?;
     
-    // Phase 9: Create response and write output
     let transformed_data = TransformedWeatherResponse {
         hours: weather_points,
         meta: create_meta(
@@ -222,7 +212,6 @@ async fn run() -> Result<()> {
     write_weather_json(&transformed_data, &filename)?;
     println!("Loaded {} hourly data points from file.", transformed_data.hours.len());
     
-    // Phase 10: Persistence (if --save flag provided)
     if args.save {
         config::save_config_from_resolved(&resolved_config, args.config.as_ref())?;
     }

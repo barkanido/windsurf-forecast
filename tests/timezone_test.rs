@@ -23,20 +23,17 @@ fn test_utc_timestamp_from_rfc3339_valid_format() {
 
 #[test]
 fn test_utc_timestamp_from_rfc3339_with_offset_normalizes_to_utc() {
-    // Timestamp with +02:00 offset should be normalized to UTC
     let timestamp = "2025-12-07T14:00:00+02:00";
     let result = UtcTimestamp::from_rfc3339(timestamp);
     assert!(result.is_ok());
     
     let utc = result.unwrap();
-    // 14:00+02:00 should become 12:00 UTC
     assert_eq!(utc.0.hour(), 12);
     assert_eq!(utc.0.minute(), 0);
 }
 
 #[test]
 fn test_utc_timestamp_from_rfc3339_rejects_invalid_format() {
-    // Invalid formats should fail
     let invalid_formats = vec![
         "2025-12-07 12:00:00",        // Space instead of T
         "2025-12-07",                  // Date only
@@ -57,7 +54,6 @@ fn test_utc_timestamp_from_rfc3339_rejects_invalid_format() {
 
 #[test]
 fn test_convert_timezone_utc_to_jerusalem() {
-    // Test conversion from UTC to Asia/Jerusalem (UTC+2)
     let utc = UtcTimestamp::from_rfc3339("2025-12-07T12:00:00Z").unwrap();
     let target_tz: Tz = "Asia/Jerusalem".parse().unwrap();
     
@@ -65,15 +61,12 @@ fn test_convert_timezone_utc_to_jerusalem() {
     assert!(result.is_ok());
     
     let local = result.unwrap();
-    // Verify the conversion happened (we'll check serialization format separately)
     let serialized = serde_json::to_string(&local).unwrap();
-    // Jerusalem is UTC+2, so 12:00 UTC -> 14:00 Jerusalem
     assert!(serialized.contains("14:00"), "Should show 14:00 in Jerusalem time");
 }
 
 #[test]
 fn test_convert_timezone_utc_to_new_york() {
-    // Test conversion from UTC to America/New_York (UTC-5 in winter)
     let utc = UtcTimestamp::from_rfc3339("2025-01-15T12:00:00Z").unwrap();
     let target_tz: Tz = "America/New_York".parse().unwrap();
     
@@ -82,13 +75,11 @@ fn test_convert_timezone_utc_to_new_york() {
     
     let local = result.unwrap();
     let serialized = serde_json::to_string(&local).unwrap();
-    // New York is UTC-5 in winter, so 12:00 UTC -> 07:00 EST
     assert!(serialized.contains("07:00"), "Should show 07:00 in New York time");
 }
 
 #[test]
 fn test_convert_timezone_utc_to_utc_preserves_time() {
-    // Converting UTC to UTC should preserve the time
     let utc = UtcTimestamp::from_rfc3339("2025-12-07T12:00:00Z").unwrap();
     let target_tz: Tz = "UTC".parse().unwrap();
     
@@ -102,20 +93,16 @@ fn test_convert_timezone_utc_to_utc_preserves_time() {
 
 #[test]
 fn test_local_timestamp_serialization_format() {
-    // Test that LocalTimestamp serializes as "YYYY-MM-DD HH:MM" (not ISO 8601)
     let utc = UtcTimestamp::from_rfc3339("2025-12-07T14:30:00Z").unwrap();
     let target_tz: Tz = "UTC".parse().unwrap();
     let local = convert_timezone(utc, target_tz).unwrap();
     
     let serialized = serde_json::to_string(&local).unwrap();
-    // Remove quotes from JSON string
     let timestamp = serialized.trim_matches('"');
     
-    // Should match "YYYY-MM-DD HH:MM" format (not "YYYY-MM-DDTHH:MM:SSZ")
     assert!(assert_timestamp_format(timestamp),
         "Timestamp should be in 'YYYY-MM-DD HH:MM' format, got: {}", timestamp);
     
-    // Should not contain ISO 8601 characters
     assert!(!timestamp.contains('T'), "Should not contain 'T' separator");
     assert!(!timestamp.contains('Z'), "Should not contain 'Z' timezone marker");
     assert!(!timestamp.contains('+'), "Should not contain '+' offset");
@@ -152,7 +139,6 @@ fn test_weather_data_point_timestamp_serialization() {
 
 #[test]
 fn test_invalid_timezone_identifier_returns_error() {
-    // Test that invalid timezone strings produce helpful errors
     let invalid_timezones = vec![
         "Invalid/Timezone",
         "NotATimezone",
@@ -168,7 +154,6 @@ fn test_invalid_timezone_identifier_returns_error() {
 
 #[test]
 fn test_timezone_config_from_string_provides_helpful_error() {
-    // Test that TimezoneConfig provides actionable error messages
     use windsurf_forecast::config::TimezoneConfig;
     
     let result = TimezoneConfig::load_with_precedence(
@@ -179,7 +164,6 @@ fn test_timezone_config_from_string_provides_helpful_error() {
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
     
-    // Should contain examples of valid timezones
     assert!(
         err_msg.contains("UTC") || err_msg.contains("America") || err_msg.contains("Asia"),
         "Error message should include examples of valid timezones"
@@ -188,7 +172,6 @@ fn test_timezone_config_from_string_provides_helpful_error() {
 
 #[test]
 fn test_timezone_precedence_cli_over_config() {
-    // CLI timezone should override config file timezone
     let result = TimezoneConfig::load_with_precedence(
         Some("America/New_York".to_string()),
         Some("Asia/Jerusalem".to_string())
@@ -202,7 +185,6 @@ fn test_timezone_precedence_cli_over_config() {
 
 #[test]
 fn test_timezone_precedence_config_over_default() {
-    // Config file timezone should be used if CLI not provided
     let result = TimezoneConfig::load_with_precedence(
         None,
         Some("Asia/Jerusalem".to_string())
@@ -216,7 +198,6 @@ fn test_timezone_precedence_config_over_default() {
 
 #[test]
 fn test_timezone_precedence_defaults_to_utc_when_not_specified() {
-    // Should default to UTC when neither CLI nor config specify timezone
     let result = TimezoneConfig::load_with_precedence(
         None,
         None
@@ -239,26 +220,20 @@ fn test_timezone_precedence_ignores_utc_in_config() {
     assert!(result.is_ok());
     let config = result.unwrap();
     assert_eq!(config.timezone.name(), "UTC");
-    // Should not be marked explicit if config just has default UTC
     assert!(!config.explicit);
 }
 
 #[test]
 fn test_local_timezone_special_value() {
-    // Test that "LOCAL" special value triggers system timezone detection
-    // This may fail on some systems where timezone detection doesn't work
     let result = TimezoneConfig::load_with_precedence(
         Some("LOCAL".to_string()),
         None
     );
     
-    // Should either succeed (if system timezone detectable) or fail with clear error
     if let Ok(config) = result {
         assert!(config.explicit, "LOCAL should be marked as explicit choice");
-        // The actual timezone will vary by system, just verify it's not UTC by default
         println!("Detected system timezone: {}", config.timezone.name());
     } else {
-        // If it fails, the error should be about timezone detection
         let err = result.unwrap_err().to_string();
         assert!(
             err.contains("timezone") || err.contains("detect"),

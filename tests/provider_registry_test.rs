@@ -64,19 +64,16 @@ fn test_all_provider_names_includes_known_providers() {
 fn test_all_provider_descriptions_includes_known_providers() {
     let descriptions: Vec<(&str, &str)> = all_provider_descriptions().collect();
 
-    // Check that we have entries
     assert!(
         descriptions.len() >= 2,
         "Should have at least 2 provider descriptions"
     );
 
-    // Check stormglass is present
     let has_stormglass = descriptions
         .iter()
         .any(|(name, _)| *name == "stormglass");
     assert!(has_stormglass, "Should include stormglass in descriptions");
-
-    // Check openweathermap is present
+    
     let has_openweathermap = descriptions
         .iter()
         .any(|(name, _)| *name == "openweathermap");
@@ -84,8 +81,7 @@ fn test_all_provider_descriptions_includes_known_providers() {
         has_openweathermap,
         "Should include openweathermap in descriptions"
     );
-
-    // Verify descriptions are not empty
+    
     for (name, desc) in descriptions {
         assert!(
             !desc.is_empty(),
@@ -138,7 +134,6 @@ fn test_validate_provider_name_error_lists_available_providers() {
 
     let err_msg = result.unwrap_err().to_string();
 
-    // Should list known providers
     assert!(
         err_msg.contains("stormglass"),
         "Error should list stormglass"
@@ -201,10 +196,7 @@ fn test_create_provider_error_lists_available_providers() {
 
 #[test]
 fn test_check_duplicates_does_not_panic_with_unique_providers() {
-    // This test verifies that check_duplicates() doesn't panic
-    // when all providers have unique names (normal case)
     check_duplicates();
-    // If we get here without panic, test passes
 }
 
 // ============================================================================
@@ -213,27 +205,22 @@ fn test_check_duplicates_does_not_panic_with_unique_providers() {
 
 #[test]
 fn test_all_registered_providers_have_valid_metadata() {
-    // Verify all registered providers have proper metadata structure
     for (name, description) in all_provider_descriptions() {
-        // Name should not be empty
         assert!(!name.is_empty(), "Provider name should not be empty");
-
-        // Description should not be empty
+        
         assert!(
             !description.is_empty(),
             "Provider {} should have description",
             name
         );
-
-        // Should be able to get full metadata
+        
         let meta = get_provider_metadata(name);
         assert!(
             meta.is_some(),
             "Should be able to retrieve metadata for {}",
             name
         );
-
-        // API key var should not be empty
+        
         let meta = meta.unwrap();
         assert!(
             !meta.api_key_var.is_empty(),
@@ -245,8 +232,6 @@ fn test_all_registered_providers_have_valid_metadata() {
 
 #[test]
 fn test_provider_names_are_consistent() {
-    // Verify that all_provider_names() and all_provider_descriptions()
-    // return consistent provider names
     let names: Vec<&str> = all_provider_names().collect();
     let desc_names: Vec<&str> = all_provider_descriptions().map(|(n, _)| n).collect();
 
@@ -267,7 +252,6 @@ fn test_provider_names_are_consistent() {
 
 #[test]
 fn test_provider_metadata_lookup_is_case_sensitive() {
-    // Provider names should be case-sensitive
     assert!(get_provider_metadata("stormglass").is_some());
     assert!(get_provider_metadata("StormGlass").is_none());
     assert!(get_provider_metadata("STORMGLASS").is_none());

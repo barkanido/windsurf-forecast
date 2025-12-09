@@ -1,9 +1,75 @@
-// Configuration file loading and persistence
-//
-// This module handles all file I/O operations for configuration:
-// - Load TOML configuration from file
-// - Save TOML configuration to file
-// - Path resolution for config file location
+//! Configuration File I/O Operations
+//!
+//! This module handles all file system operations for configuration management,
+//! including loading from and saving to TOML files.
+//!
+//! # File Format
+//!
+//! Configuration is stored in TOML format at `~/.windsurf-config.toml` by default:
+//!
+//! ```toml
+//! [general]
+//! timezone = "Asia/Jerusalem"
+//! default_provider = "stormglass"
+//! lat = 32.486722
+//! lng = 34.888722
+//! ```
+//!
+//! # Structures
+//!
+//! - [`Config`]: Top-level configuration with `[general]` section
+//! - [`GeneralConfig`]: Application configuration fields
+//!
+//! # Functions
+//!
+//! - [`load_config()`]: Load configuration from file (returns default if missing)
+//! - [`save_config()`]: Persist configuration to file
+//! - [`get_default_config_path()`]: Resolve default config file path
+//!
+//! # Design Principles
+//!
+//! ## Graceful Defaults
+//!
+//! Missing config file is **not an error** - returns [`Config::default()`] instead.
+//! This allows first-time users to run the application without manual setup.
+//!
+//! ## Error Context
+//!
+//! All file I/O errors include:
+//! - Operation that failed (read/write/parse)
+//! - File path involved
+//! - Underlying error cause
+//!
+//! Example error message:
+//! ```text
+//! Failed to parse config file: /home/user/.windsurf-config.toml
+//! Caused by: TOML parse error at line 3, column 5
+//! ```
+//!
+//! ## Backward Compatibility
+//!
+//! The TOML structure is **stable** and maintains backward compatibility:
+//! - Field names never change
+//! - New fields use `#[serde(default)]`
+//! - Optional fields use `#[serde(skip_serializing_if)]`
+//!
+//! # Example Usage
+//!
+//! ```rust,no_run
+//! use windsurf_forecast::config::loader::{Config, load_config, save_config};
+//!
+//! # fn example() -> anyhow::Result<()> {
+//! // Load from default path (~/.windsurf-config.toml)
+//! let config = load_config(None)?;
+//! println!("Timezone: {}", config.general.timezone);
+//!
+//! // Modify and save back
+//! let mut config = config;
+//! config.general.timezone = "America/New_York".to_string();
+//! save_config(&config, None)?;
+//! # Ok(())
+//! # }
+//! ```
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -23,7 +89,7 @@ pub struct Config {
 /// General configuration section
 ///
 /// Field names match existing TOML structure.
-/// Optional fields use Option<T>.
+/// Optional fields use `Option<T>`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeneralConfig {
     /// Timezone identifier (e.g., "UTC", "Asia/Jerusalem")
@@ -74,11 +140,6 @@ pub fn get_default_config_path() -> Result<PathBuf> {
     }
 }
 
-/// Load configuration from TOML file
-///
-/// Returns default Config if file doesn't exist (not an error).
-/// Returns error for malformed TOML with helpful context.
-/// Path parameter: Some(path) for custom location, None for default.
 pub fn load_config(path: Option<&PathBuf>) -> Result<Config> {
     let config_path = if let Some(p) = path {
         p.clone()
@@ -86,7 +147,6 @@ pub fn load_config(path: Option<&PathBuf>) -> Result<Config> {
         get_default_config_path()?
     };
 
-    // Return default if file doesn't exist (not an error)
     if !config_path.exists() {
         return Ok(Config::default());
     }
@@ -100,11 +160,6 @@ pub fn load_config(path: Option<&PathBuf>) -> Result<Config> {
     Ok(config)
 }
 
-/// Save configuration to TOML file
-///
-/// Serializes to pretty-printed TOML.
-/// Returns error with file path on I/O failure.
-/// Path parameter: Some(path) for custom location, None for default.
 pub fn save_config(config: &Config, path: Option<&PathBuf>) -> Result<()> {
     let config_path = if let Some(p) = path {
         p.clone()

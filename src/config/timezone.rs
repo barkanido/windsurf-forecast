@@ -1,10 +1,107 @@
-// Timezone-specific configuration and utilities
-//
-// This module handles timezone detection, validation, and interactive selection:
-// - TimezoneConfig: Tracks explicit vs default timezone
-// - System timezone detection
-// - Coordinate-timezone validation
-// - Interactive timezone picker
+//! Timezone Configuration and Utilities
+//!
+//! This module provides timezone-specific configuration handling, including
+//! detection, validation, and interactive selection.
+//!
+//! # Core Concepts
+//!
+//! ## [`TimezoneConfig`] - Explicit vs Default Tracking
+//!
+//! The [`TimezoneConfig`] structure tracks whether a timezone was explicitly
+//! set by the user or defaulted to UTC. This enables conditional warning
+//! messages without repeated prompts.
+//!
+//! ```rust
+//! use windsurf_forecast::config::timezone::TimezoneConfig;
+//!
+//! # fn example() -> anyhow::Result<()> {
+//! // From CLI or config (explicit)
+//! let config = TimezoneConfig::load_with_precedence(
+//!     Some("America/New_York".to_string()),
+//!     None
+//! )?;
+//! assert!(config.explicit);  // No warning will be shown
+//!
+//! // Default (no user input)
+//! let config = TimezoneConfig::load_with_precedence(None, None)?;
+//! assert!(!config.explicit);  // Warning will be shown
+//! config.display_default_warning();
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Special Values
+//!
+//! ## "LOCAL" - System Timezone Detection
+//!
+//! The special string `"LOCAL"` (case-sensitive) triggers automatic detection
+//! of the system's configured timezone:
+//!
+//! ```bash
+//! windsurf-forecast --timezone LOCAL
+//! ```
+//!
+//! Uses `iana-time-zone` crate for cross-platform timezone detection.
+//!
+//! # Precedence Rules
+//!
+//! Timezone resolution follows these rules:
+//! 1. **CLI argument** (`--timezone` or `-z`) - highest priority
+//! 2. **Config file** (`~/.windsurf-config.toml`) - if not "UTC"
+//! 3. **Default to UTC** - with warning message
+//!
+//! **Note**: Config file "UTC" is ignored (treated as unset) to allow
+//! distinguishing between explicit UTC choice and default fallback.
+//!
+//! # Functions
+//!
+//! - [`detect_system_timezone()`]: Auto-detect local timezone from OS
+//! - [`validate_timezone_coordinates()`]: Check timezone matches coordinates
+//! - [`pick_timezone_interactive()`]: Launch interactive picker UI
+//!
+//! # Coordinate Validation
+//!
+//! The [`validate_timezone_coordinates()`] function warns users when the
+//! configured timezone doesn't match the location coordinates. This prevents
+//! confusing timestamp displays.
+//!
+//! ```text
+//! ⚠️  WARNING: Timezone mismatch detected!
+//!    Configured timezone: America/New_York
+//!    Detected timezone at coordinates (51.5074, -0.1278): Europe/London
+//!    This may cause incorrect timestamp displays.
+//! ```
+//!
+//! # Interactive Picker
+//!
+//! The [`pick_timezone_interactive()`] function provides a searchable,
+//! fuzzy-matching interface for selecting from all 600+ IANA timezones:
+//!
+//! ```bash
+//! windsurf-forecast --pick-timezone
+//! ```
+//!
+//! Features:
+//! - Fuzzy search by typing
+//! - Arrow key navigation
+//! - Automatic persistence to config file
+//!
+//! # Error Messages
+//!
+//! Invalid timezone identifiers provide helpful examples:
+//! ```text
+//! Invalid timezone identifier: 'EST'
+//!
+//! Examples of valid identifiers:
+//! - UTC
+//! - LOCAL (use system timezone)
+//! - America/New_York
+//! - Europe/London
+//! - Asia/Jerusalem
+//!
+//! For a complete list, see:
+//! https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+//! ```
 
 use anyhow::{anyhow, Context, Result};
 use chrono_tz::Tz;
@@ -42,10 +139,7 @@ impl TimezoneConfig {
         }
     }
     
-    /// Parse timezone from string identifier
-    /// Special value "LOCAL" detects system timezone automatically
     fn from_string(s: &str) -> Result<Self> {
-        // Handle special "LOCAL" value (case-sensitive)
         if s == "LOCAL" {
             let tz = detect_system_timezone()?;
             return Ok(Self::explicit(tz));
@@ -73,37 +167,24 @@ impl TimezoneConfig {
         Ok(Self::explicit(tz))
     }
     
-    /// Load timezone configuration with standard precedence rules
-    ///
-    /// Precedence (highest to lowest):
-    /// 1. CLI argument (if provided)
-    /// 2. Config file timezone (if not "UTC")
-    /// 3. Default to UTC with warning
     pub fn load_with_precedence(
         cli_tz: Option<String>,
         config_tz: Option<String>
     ) -> Result<Self> {
-        // 1. Try CLI argument
         if let Some(tz_str) = cli_tz {
             return Self::from_string(&tz_str);
         }
         
-        // 2. Try config file timezone (ignore "UTC" default)
         if let Some(tz_str) = config_tz {
             if tz_str != "UTC" {
                 return Self::from_string(&tz_str);
             }
         }
         
-        // 3. Default to UTC (will trigger warning)
         Ok(Self::default_utc())
     }
     
-    /// Display warning if using default timezone
-    ///
-    /// Should be called once during application startup if config.explicit == false.
-    /// Writes to stderr to avoid polluting JSON output on stdout.
-    pub fn display_default_warning(&self) {
+    pub fn display_timezone_warning_if_default(&self) {
         if !self.explicit {
             eprintln!("Warning: No timezone configured. Using UTC as default.");
             eprintln!("Set timezone via --timezone flag or configure in ~/.windsurf-config.toml");

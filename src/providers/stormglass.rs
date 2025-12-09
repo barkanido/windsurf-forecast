@@ -95,11 +95,9 @@ impl StormGlassProvider {
     const MS_TO_KNOTS: f64 = 1.94384;
 
     fn transform_hour(hour: RawHourlyData, target_tz: Tz) -> Result<WeatherDataPoint> {
-        // Parse timestamp as UTC
         let utc = UtcTimestamp::from_rfc3339(&hour.time)
             .context("Failed to parse timestamp")?;
         
-        // Convert to target timezone
         let local = convert_timezone(utc, target_tz)?;
 
         Ok(WeatherDataPoint {
@@ -180,7 +178,6 @@ impl ForecastProvider for StormGlassProvider {
             .await
             .context("Failed to parse API response")?;
 
-        // Transform all hourly data
         let mut weather_points = Vec::with_capacity(data.hours.len());
         for hour in data.hours {
             weather_points.push(Self::transform_hour(hour, target_tz)?);

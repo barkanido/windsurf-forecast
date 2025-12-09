@@ -93,12 +93,10 @@ pub fn validate_args(args: &Args) -> Result<()> {
 }
 
 fn validate_days_range(args: &Args) -> Result<()> {
-    // Validate days_ahead range
     if args.days_ahead < 1 || args.days_ahead > 7 {
         anyhow::bail!("days-ahead must be between 1 and 7 (got {})", args.days_ahead);
     }
 
-    // Validate first_day_offset range
     if args.first_day_offset < 0 || args.first_day_offset > 7 {
         anyhow::bail!(
             "first-day-offset must be between 0 and 7 (got {})",
@@ -106,7 +104,6 @@ fn validate_days_range(args: &Args) -> Result<()> {
         );
     }
 
-    // Validate total days doesn't exceed maximum
     let total_days = args.days_ahead + args.first_day_offset;
     if total_days > 7 {
         anyhow::bail!(

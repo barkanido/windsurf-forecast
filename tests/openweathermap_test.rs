@@ -16,13 +16,11 @@ use windsurf_forecast::providers::openweathermap::OpenWeatherMapProvider;
 
 #[test]
 fn test_openweathermap_wind_speed_remains_in_ms() {
-    // OpenWeatherMap returns wind speed in m/s and we keep it as-is
     // This is DIFFERENT from StormGlass which converts to knots
     
     let wind_speed_ms = 5.0;
     let expected_output = 5.0;
     
-    // Verify NO conversion happens
     assert_eq!(
         wind_speed_ms,
         expected_output,
@@ -32,16 +30,12 @@ fn test_openweathermap_wind_speed_remains_in_ms() {
 
 #[test]
 fn test_openweathermap_vs_stormglass_units() {
-    // Document the critical difference between providers
     const STORMGLASS_MS_TO_KNOTS: f64 = 1.94384;
     
     let wind_speed_ms = 10.0;
     
-    // StormGlass would convert:
-    let stormglass_output = wind_speed_ms * STORMGLASS_MS_TO_KNOTS; // 19.4384 knots
-    
-    // OpenWeatherMap keeps original:
-    let openweathermap_output = wind_speed_ms; // 10.0 m/s
+    let stormglass_output = wind_speed_ms * STORMGLASS_MS_TO_KNOTS;
+    let openweathermap_output = wind_speed_ms;
     
     assert_ne!(
         stormglass_output, openweathermap_output,
@@ -52,7 +46,6 @@ fn test_openweathermap_vs_stormglass_units() {
 
 #[test]
 fn test_openweathermap_gust_remains_in_ms() {
-    // Gust values also remain in m/s (no conversion)
     let gust_ms = 15.5;
     let expected_output = 15.5;
     
@@ -65,15 +58,12 @@ fn test_openweathermap_gust_remains_in_ms() {
 
 #[test]
 fn test_openweathermap_response_structure_complete() {
-    // Verify we can parse a complete OpenWeatherMap response
     let response = mock_openweathermap_complete_response();
     
-    // Should have 'list' array (not 'hours' like StormGlass)
     assert!(response["list"].is_array());
     let list = response["list"].as_array().unwrap();
     assert!(!list.is_empty());
     
-    // First item should have expected structure
     let first_item = &list[0];
     assert!(first_item["dt"].is_number(), "Should have Unix timestamp");
     assert!(first_item["main"].is_object(), "Should have main object");
@@ -82,30 +72,24 @@ fn test_openweathermap_response_structure_complete() {
 
 #[test]
 fn test_openweathermap_response_structure_minimal() {
-    // Verify minimal response structure
     let response = mock_openweathermap_minimal_response();
     
     let list = response["list"].as_array().unwrap();
     let first_item = &list[0];
     
-    // Required fields
     assert!(first_item["dt"].is_number());
     assert!(first_item["main"]["temp"].is_number());
 }
 
 #[test]
 fn test_openweathermap_response_without_gust() {
-    // Gust is optional in OpenWeatherMap responses
     let response = mock_openweathermap_no_gust();
     
     let list = response["list"].as_array().unwrap();
     let first_item = &list[0];
     
-    // Wind speed and direction should be present
     assert!(first_item["wind"]["speed"].is_number());
     assert!(first_item["wind"]["deg"].is_number());
-    
-    // Gust may be missing
     assert!(first_item["wind"]["gust"].is_null());
 }
 
@@ -115,7 +99,6 @@ fn test_openweathermap_response_without_gust() {
 
 #[test]
 fn test_openweathermap_unix_timestamp_parsing() {
-    // OpenWeatherMap uses Unix timestamps (seconds since epoch)
     use chrono::{DateTime, Utc};
     
     let unix_timestamp: i64 = 1702213200; // Dec 10, 2023, 09:00:00 UTC
@@ -128,7 +111,6 @@ fn test_openweathermap_unix_timestamp_parsing() {
 fn test_openweathermap_timestamp_edge_cases() {
     use chrono::{DateTime, Utc};
     
-    // Test edge cases
     let test_cases = vec![
         (0i64, true),              // Epoch start (valid)
         (1704067200i64, true),     // 2024-01-01 (valid)
@@ -149,16 +131,13 @@ fn test_openweathermap_timestamp_edge_cases() {
 
 #[test]
 fn test_openweathermap_field_names_match_api() {
-    // Verify our mock data uses correct OpenWeatherMap field names
     let response = mock_openweathermap_complete_response();
     let item = &response["list"][0];
     
-    // OpenWeatherMap uses specific field names
     assert!(item["dt"].is_number(), "Timestamp field should be 'dt'");
     assert!(item["main"].is_object(), "Main data should be in 'main' object");
     assert!(item["wind"].is_object(), "Wind data should be in 'wind' object");
     
-    // Check nested fields
     let main = &item["main"];
     assert!(main["temp"].is_number(), "Temperature field should be 'temp'");
     
@@ -169,7 +148,6 @@ fn test_openweathermap_field_names_match_api() {
 
 #[test]
 fn test_openweathermap_temperature_field() {
-    // OpenWeatherMap uses 'temp' in the 'main' object
     let response = mock_openweathermap_complete_response();
     let item = &response["list"][0];
     
@@ -183,17 +161,12 @@ fn test_openweathermap_temperature_field() {
 
 #[test]
 fn test_openweathermap_wind_fields() {
-    // OpenWeatherMap wind object structure
     let response = mock_openweathermap_complete_response();
     let item = &response["list"][0];
     let wind = &item["wind"];
     
-    // Required fields
     assert!(wind["speed"].is_number(), "Should have wind speed");
     assert!(wind["deg"].is_number(), "Should have wind direction");
-    
-    // Optional field
-    // gust may or may not be present
 }
 
 // ============================================================================
@@ -202,28 +175,21 @@ fn test_openweathermap_wind_fields() {
 
 #[test]
 fn test_openweathermap_gust_field_optional() {
-    // Gust field may be missing in some responses
     let response_with_gust = mock_openweathermap_complete_response();
     let response_without_gust = mock_openweathermap_no_gust();
     
-    // With gust
     let with = &response_with_gust["list"][0]["wind"]["gust"];
     assert!(with.is_number(), "Complete response should have gust");
     
-    // Without gust
     let without = &response_without_gust["list"][0]["wind"]["gust"];
     assert!(without.is_null(), "Minimal response may not have gust");
 }
 
 #[test]
 fn test_openweathermap_marine_data_not_available() {
-    // OpenWeatherMap doesn't provide marine data (swell, water temp)
-    // These should be None in transformed output
-    
     let response = mock_openweathermap_complete_response();
     let item = &response["list"][0];
     
-    // Verify marine fields don't exist in OpenWeatherMap response
     assert!(item["swellHeight"].is_null());
     assert!(item["swellPeriod"].is_null());
     assert!(item["swellDirection"].is_null());
@@ -236,7 +202,6 @@ fn test_openweathermap_marine_data_not_available() {
 
 #[test]
 fn test_openweathermap_http_401_error_structure() {
-    // Test error response for invalid API key
     let status_code = 401;
     let error_message = "Invalid API key";
     
@@ -246,7 +211,6 @@ fn test_openweathermap_http_401_error_structure() {
 
 #[test]
 fn test_openweathermap_http_500_error_structure() {
-    // Test error response for server error
     let status_code = 500;
     let error_message = "Internal Server Error";
     
@@ -260,7 +224,6 @@ fn test_openweathermap_http_500_error_structure() {
 
 #[test]
 fn test_openweathermap_invalid_json_detection() {
-    // Invalid JSON should be detectable
     let invalid_json = "{ invalid json }";
     let result: Result<serde_json::Value, _> = serde_json::from_str(invalid_json);
     
@@ -269,12 +232,10 @@ fn test_openweathermap_invalid_json_detection() {
 
 #[test]
 fn test_openweathermap_missing_required_fields() {
-    // Response missing required 'list' field
     let invalid_response = json!({
         "city": {
             "name": "Tel Aviv"
         }
-        // Missing 'list' field
     });
     
     assert!(invalid_response["list"].is_null());
@@ -282,13 +243,9 @@ fn test_openweathermap_missing_required_fields() {
 
 #[test]
 fn test_openweathermap_invalid_unix_timestamp() {
-    // Test with invalid timestamp values
-    // Very large values might not parse correctly
     let invalid_timestamp: i64 = i64::MAX;
     let _result = chrono::DateTime::<chrono::Utc>::from_timestamp(invalid_timestamp, 0);
     
-    // This may or may not parse depending on system
-    // Just document the behavior
 }
 
 // ============================================================================
@@ -297,7 +254,6 @@ fn test_openweathermap_invalid_unix_timestamp() {
 
 #[test]
 fn test_openweathermap_wind_speed_reasonable_ranges() {
-    // Wind speeds should be in reasonable ranges (m/s, no conversion)
     let typical_speeds_ms = vec![0.0, 3.0, 8.0, 15.0, 25.0, 40.0];
     
     for speed in typical_speeds_ms {
@@ -308,7 +264,6 @@ fn test_openweathermap_wind_speed_reasonable_ranges() {
 
 #[test]
 fn test_openweathermap_temperature_in_celsius() {
-    // OpenWeatherMap returns temperature in Celsius (with units=metric)
     let temps = vec![-20.0, 0.0, 15.0, 25.0, 40.0];
     
     for temp in temps {
@@ -319,7 +274,6 @@ fn test_openweathermap_temperature_in_celsius() {
 
 #[test]
 fn test_openweathermap_direction_valid_range() {
-    // Wind direction should be 0-360 degrees
     let directions = vec![0.0, 90.0, 180.0, 270.0, 359.9];
     
     for direction in directions {
@@ -334,7 +288,6 @@ fn test_openweathermap_direction_valid_range() {
 
 #[test]
 fn test_openweathermap_city_information_structure() {
-    // OpenWeatherMap includes city information in response
     let response = mock_openweathermap_complete_response();
     
     assert!(response["city"].is_object(), "Should have city information");
@@ -350,7 +303,6 @@ fn test_openweathermap_city_information_structure() {
 
 #[test]
 fn test_openweathermap_coordinate_validation() {
-    // Verify coordinates are in valid ranges
     let response = mock_openweathermap_complete_response();
     let coord = &response["city"]["coord"];
     
@@ -367,7 +319,6 @@ fn test_openweathermap_coordinate_validation() {
 
 #[test]
 fn test_openweathermap_provider_instantiation() {
-    // Test that we can create a provider instance
     let api_key = "test_api_key_12345".to_string();
     let provider = OpenWeatherMapProvider::new(api_key);
     
@@ -384,14 +335,11 @@ fn test_openweathermap_provider_name() {
 
 #[test]
 fn test_openweathermap_no_unit_conversion_in_transform() {
-    // Verify OpenWeatherMap keeps wind speed in m/s (no conversion)
     // This is the key difference from StormGlass
     
     let wind_speed_ms = 10.0;
-    let expected_output = wind_speed_ms; // No conversion!
+    let expected_output = wind_speed_ms;
     
     assert_eq!(expected_output, 10.0);
     
-    // Document: StormGlass would multiply by 1.94384
-    // OpenWeatherMap does NOT
 }

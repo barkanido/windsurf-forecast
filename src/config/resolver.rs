@@ -1,10 +1,86 @@
-// Configuration resolution and validation
-//
-// This module implements the precedence resolution logic and validation rules:
-// - Generic precedence resolution (CLI > Config > Default)
-// - Coordinate validation and resolution
-// - Date range validation
-// - Main entry point for configuration resolution
+//! Configuration Resolution and Validation
+//!
+//! This module implements the core logic for resolving configuration values
+//! from multiple sources and validating them according to business rules.
+//!
+//! # Precedence Resolution
+//!
+//! All configuration parameters follow the same precedence order:
+//! **CLI > Config File > Default**
+//!
+//! ## Generic Resolution Functions
+//!
+//! ### [`resolve()`] - Simple Precedence
+//! ```rust
+//! use windsurf_forecast::config::resolver::resolve;
+//!
+//! let value = resolve(
+//!     Some("cli_value"),      // CLI argument (highest priority)
+//!     Some("config_value"),   // Config file value
+//!     "default_value"         // Default (lowest priority)
+//! );
+//! assert_eq!(value, "cli_value");
+//! ```
+//!
+//! ### [`resolve_with_source()`] - Precedence with Source Tracking
+//! Same as `resolve()` but returns a tuple `(value, source)` indicating where
+//! the value originated. Used for enhanced error messages.
+//!
+//! # Validation Functions
+//!
+//! ## Coordinate Validation
+//!
+//! - [`validate_coordinates()`]: Validates lat/lng ranges
+//!   - Latitude: -90.0 to 90.0 (inclusive)
+//!   - Longitude: -180.0 to 180.0 (inclusive)
+//!
+//! - [`resolve_coordinates()`]: Applies precedence then validates
+//!   - Returns error if neither CLI nor config provides both lat AND lng
+//!
+//! ## Date Range Validation
+//!
+//! - [`validate_date_range()`]: Validates forecast parameters
+//!   - `days_ahead`: 1-7 (inclusive)
+//!   - `first_day_offset`: 0-7 (inclusive)
+//!   - Business rule: `days_ahead + first_day_offset ≤ 7`
+//!
+//! # Main Entry Point
+//!
+//! [`resolve_from_args_and_file()`] is the primary function that:
+//! 1. Loads config file
+//! 2. Applies precedence to all parameters
+//! 3. Validates all resolved values
+//! 4. Returns [`ResolvedConfig`] ready for use
+//!
+//! # Error Messages
+//!
+//! Validation errors include:
+//! - Parameter name
+//! - Invalid value
+//! - Validation rule violated
+//! - Suggested fix
+//!
+//! Example:
+//! ```text
+//! Latitude 95.0 is out of valid range.
+//! Must be between -90.0 and 90.0 degrees.
+//! ```
+//!
+//! # Example Flow
+//!
+//! ```text
+//! Args { lat: Some(40.7), lng: Some(-74.0), days_ahead: 3, ... }
+//!           ↓
+//! load_config() → Config { lat: Some(32.0), lng: Some(34.0), ... }
+//!           ↓
+//! resolve_coordinates() → (40.7, -74.0)  [CLI wins]
+//!           ↓
+//! validate_coordinates(40.7, -74.0) → ✓ OK
+//!           ↓
+//! validate_date_range(3, 0) → ✓ OK
+//!           ↓
+//! ResolvedConfig { lat: 40.7, lng: -74.0, days_ahead: 3, ... }
+//! ```
 
 use anyhow::{anyhow, Result};
 use crate::args::Args;
@@ -16,6 +92,7 @@ use super::timezone::TimezoneConfig;
 ///
 /// Precedence order: CLI > Config > Default
 /// Works with any type T
+#[allow(dead_code)] // Part of contract, will be used in future enhancements
 pub fn resolve<T>(cli: Option<T>, config: Option<T>, default: T) -> T {
     cli.or(config).unwrap_or(default)
 }
@@ -24,6 +101,7 @@ pub fn resolve<T>(cli: Option<T>, config: Option<T>, default: T) -> T {
 ///
 /// Same precedence as resolve(), but returns tuple: (value, source)
 /// Source indicates where value came from (CLI/Config/Default)
+#[allow(dead_code)] // Part of contract, will be used in future enhancements
 pub fn resolve_with_source<T: Clone>(
     cli: Option<T>,
     config: Option<T>,
@@ -117,45 +195,31 @@ pub fn validate_date_range(days_ahead: i32, first_day_offset: i32) -> Result<()>
     Ok(())
 }
 
-/// Resolve complete configuration from CLI args and config file
-///
-/// This is the main entry point for configuration resolution.
-/// It loads the config file, applies precedence rules to all parameters,
-/// validates all resolved values, and returns a fully validated ResolvedConfig.
 pub fn resolve_from_args_and_file(args: &Args) -> Result<ResolvedConfig> {
-    // 1. Load config file
     let config = load_config(args.config.as_ref())?;
     
-    // 2. Resolve timezone
     let timezone_config = TimezoneConfig::load_with_precedence(
         args.timezone.clone(),
         Some(config.general.timezone.clone()),
     )?;
     
-    // Display warning if using default timezone
-    timezone_config.display_default_warning();
+    timezone_config.display_timezone_warning_if_default();
     
-    // 3. Resolve coordinates (must be provided, no defaults)
     let (lat, lng) = resolve_coordinates(
         args.lat,
         args.lng,
         &config,
     )?;
     
-    // 4. Resolve provider (args.provider always has a value from clap default)
     let provider = args.provider.clone();
     
-    // 5. Resolve days parameters (these already have defaults from Args)
     let days_ahead = args.days_ahead;
     let first_day_offset = args.first_day_offset;
     
-    // 6. Validate date range
     validate_date_range(days_ahead, first_day_offset)?;
     
-    // 7. Validate provider (against registry)
     crate::args::validate_provider(&provider)?;
     
-    // 8. Construct validated config
     Ok(ResolvedConfig {
         provider,
         timezone: timezone_config.timezone,
