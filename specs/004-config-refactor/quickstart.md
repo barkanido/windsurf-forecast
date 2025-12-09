@@ -76,7 +76,7 @@ src/config.rs       # Split into config/ module
    // src/config/timezone.rs
    - Move TimezoneConfig from config.rs
    - Move detect_system_timezone() function
-   - Move validate_timezone_coordinates() function
+   - Move check_timezone_match() function
    - Move pick_timezone_interactive() function
    - No changes to logic, just relocation
    ```

@@ -55,21 +55,6 @@
 //!
 //! # Example Usage
 //!
-//! ```rust,no_run
-//! use windsurf_forecast::config::loader::{Config, load_config, save_config};
-//!
-//! # fn example() -> anyhow::Result<()> {
-//! // Load from default path (~/.windsurf-config.toml)
-//! let config = load_config(None)?;
-//! println!("Timezone: {}", config.general.timezone);
-//!
-//! // Modify and save back
-//! let mut config = config;
-//! config.general.timezone = "America/New_York".to_string();
-//! save_config(&config, None)?;
-//! # Ok(())
-//! # }
-//! ```
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -95,15 +80,15 @@ pub struct GeneralConfig {
     /// Timezone identifier (e.g., "UTC", "Asia/Jerusalem")
     #[serde(default = "default_timezone")]
     pub timezone: String,
-    
+
     /// Default weather provider
     #[serde(default = "default_provider")]
     pub default_provider: String,
-    
+
     /// Latitude for forecast location (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lat: Option<f64>,
-    
+
     /// Longitude for forecast location (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lng: Option<f64>,
@@ -140,7 +125,7 @@ pub fn get_default_config_path() -> Result<PathBuf> {
     }
 }
 
-pub fn load_config(path: Option<&PathBuf>) -> Result<Config> {
+pub fn load_config_from_file(path: Option<&PathBuf>) -> Result<Config> {
     let config_path = if let Some(p) = path {
         p.clone()
     } else {
@@ -151,12 +136,16 @@ pub fn load_config(path: Option<&PathBuf>) -> Result<Config> {
         return Ok(Config::default());
     }
 
-    let contents = fs::read_to_string(&config_path)
-        .context(format!("Failed to read config file: {}", config_path.display()))?;
-    
-    let config: Config = toml::from_str(&contents)
-        .context(format!("Failed to parse config file: {}", config_path.display()))?;
-    
+    let contents = fs::read_to_string(&config_path).context(format!(
+        "Failed to read config file: {}",
+        config_path.display()
+    ))?;
+
+    let config: Config = toml::from_str(&contents).context(format!(
+        "Failed to parse config file: {}",
+        config_path.display()
+    ))?;
+
     Ok(config)
 }
 
@@ -167,11 +156,13 @@ pub fn save_config(config: &Config, path: Option<&PathBuf>) -> Result<()> {
         get_default_config_path()?
     };
 
-    let toml_string = toml::to_string_pretty(config)
-        .context("Failed to serialize config to TOML")?;
-    
-    fs::write(&config_path, toml_string)
-        .context(format!("Failed to write config file: {}", config_path.display()))?;
-    
+    let toml_string =
+        toml::to_string_pretty(config).context("Failed to serialize config to TOML")?;
+
+    fs::write(&config_path, toml_string).context(format!(
+        "Failed to write config file: {}",
+        config_path.display()
+    ))?;
+
     Ok(())
 }

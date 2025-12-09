@@ -12,8 +12,8 @@ mod forecast_provider;
 mod provider_registry;
 mod providers;
 
-use args::{Args, validate_args};
-use config::{pick_timezone_interactive, validate_timezone_coordinates};
+use args::{validate_args, Args};
+use config::{check_timezone_match, pick_timezone_interactive};
 use forecast_provider::WeatherDataPoint;
 
 // ============================================================================
@@ -48,16 +48,35 @@ fn create_units_map(provider_name: &str) -> HashMap<String, String> {
         "openweathermap" => "m/s",
         _ => "m/s",
     };
-    
+
     [
-        ("windSpeed", format!("Speed of wind at 10m above ground in {}", wind_unit)),
+        (
+            "windSpeed",
+            format!("Speed of wind at 10m above ground in {}", wind_unit),
+        ),
         ("gust", format!("Wind gust in {}", wind_unit)),
-        ("airTemperature", "Air temperature in degrees celsius".to_string()),
+        (
+            "airTemperature",
+            "Air temperature in degrees celsius".to_string(),
+        ),
         ("swellHeight", "Height of swell waves in meters".to_string()),
-        ("swellPeriod", "Period of swell waves in seconds".to_string()),
-        ("swellDirection", "Direction of swell waves. 0° indicates swell coming from north".to_string()),
-        ("waterTemperature", "Water temperature in degrees celsius".to_string()),
-        ("windDirection", "Direction of wind at 10m above ground. 0° indicates wind coming from north".to_string()),
+        (
+            "swellPeriod",
+            "Period of swell waves in seconds".to_string(),
+        ),
+        (
+            "swellDirection",
+            "Direction of swell waves. 0° indicates swell coming from north".to_string(),
+        ),
+        (
+            "waterTemperature",
+            "Water temperature in degrees celsius".to_string(),
+        ),
+        (
+            "windDirection",
+            "Direction of wind at 10m above ground. 0° indicates wind coming from north"
+                .to_string(),
+        ),
     ]
     .iter()
     .map(|(k, v)| (k.to_string(), v.clone()))
@@ -121,7 +140,7 @@ async fn run() -> Result<()> {
     dotenv::dotenv().ok();
     provider_registry::check_duplicates();
     let args = Args::parse();
-    
+
     if args.list_providers {
         println!("Available weather providers:\n");
         for (name, description) in provider_registry::all_provider_descriptions() {
@@ -135,62 +154,63 @@ async fn run() -> Result<()> {
 
     if args.pick_timezone {
         let selected_tz = pick_timezone_interactive()?;
-        
-        let mut config = config::load_config(args.config.as_ref())?;
+
+        let mut config = config::load_config_from_file(args.config_file_path.as_ref())?;
         config.general.timezone = selected_tz.clone();
-        config::save_config(&config, args.config.as_ref())?;
-        
-        let config_path = args.config.as_ref()
-            .map(|p| p.display().to_string())
-            .unwrap_or_else(|| config::get_default_config_path().unwrap().display().to_string());
-        
-        println!("✓ Timezone '{}' saved to config file: {}", selected_tz, config_path);
+        config::save_config(&config, args.config_file_path.as_ref())?;
+
+        let config_path = args.config_path_display().unwrap_or_else(|| {
+            config::get_default_config_path()
+                .unwrap()
+                .display()
+                .to_string()
+        });
+        println!(
+            "✓ Timezone '{}' saved to config file: {}",
+            selected_tz, config_path
+        );
         return Ok(());
     }
-    
-    validate_args(&args)?;
-    
-    let resolved_config = config::resolve_from_args_and_file(&args)?;
-    
-    eprintln!("\n📋 Configuration:");
-    eprintln!("   Provider: {}", resolved_config.provider);
-    eprintln!("   Days ahead: {}", resolved_config.days_ahead);
-    eprintln!("   First day offset: {}", resolved_config.first_day_offset);
-    eprintln!("   Timezone: {}", resolved_config.timezone.name());
-    eprintln!("   Coordinates: ({:.6}, {:.6})", resolved_config.lat, resolved_config.lng);
-    
-    let config_path_display = args.config.as_ref()
-        .map(|p| p.display().to_string())
-        .unwrap_or_else(|| config::get_default_config_path().unwrap().display().to_string());
-    eprintln!("   Config file: {}", config_path_display);
-    eprintln!();
-    
-    // Validate timezone against coordinates
-    validate_timezone_coordinates(resolved_config.timezone, resolved_config.lat, resolved_config.lng);
-    
-    let provider = provider_registry::create_provider(&resolved_config.provider)?;
-    
-    let now = Utc::now();
-    let start = (now + chrono::Duration::days(resolved_config.first_day_offset as i64))
-        .date_naive()
-        .and_hms_opt(0, 0, 0)
-        .unwrap();
-    let start = Utc.from_utc_datetime(&start);
 
-    let end = (now + chrono::Duration::days((resolved_config.first_day_offset + resolved_config.days_ahead - 1) as i64))
-        .date_naive()
-        .and_hms_opt(23, 59, 59)
-        .unwrap();
-    let end = Utc.from_utc_datetime(&end);
-    
-    let weather_points = provider.fetch_weather_data(
-        start,
-        end,
+    validate_args(&args)?;
+
+    let resolved_config = config::resolve_from_args_and_file(&args)?;
+
+    eprintln!("\n{}", resolved_config);
+
+    let config_path = args.config_path_display().unwrap_or_else(|| {
+        config::get_default_config_path()
+            .unwrap()
+            .display()
+            .to_string()
+    });
+    eprintln!("   Config file: {}", config_path);
+
+    check_timezone_match(
+        resolved_config.timezone,
         resolved_config.lat,
         resolved_config.lng,
-        resolved_config.timezone
-    ).await?;
-    
+    );
+
+    let provider = provider_registry::create_provider(&resolved_config.provider)?;
+
+    let now = Utc::now();
+    let start = day_start_utc(now, resolved_config.first_day_offset as i64);
+    let end = day_end_utc(
+        now,
+        (resolved_config.first_day_offset + resolved_config.days_ahead - 1) as i64,
+    );
+
+    let weather_points = provider
+        .fetch_weather_data(
+            start,
+            end,
+            resolved_config.lat,
+            resolved_config.lng,
+            resolved_config.timezone,
+        )
+        .await?;
+
     let transformed_data = TransformedWeatherResponse {
         hours: weather_points,
         meta: create_meta(
@@ -199,7 +219,7 @@ async fn run() -> Result<()> {
             start,
             end,
             provider.name(),
-            resolved_config.timezone
+            resolved_config.timezone,
         ),
     };
 
@@ -210,11 +230,32 @@ async fn run() -> Result<()> {
     );
 
     write_weather_json(&transformed_data, &filename)?;
-    println!("Loaded {} hourly data points from file.", transformed_data.hours.len());
-    
+    println!(
+        "Loaded {} hourly data points from file.",
+        transformed_data.hours.len()
+    );
+
     if args.save {
-        config::save_config_from_resolved(&resolved_config, args.config.as_ref())?;
+        config::save_config_from_resolved(&resolved_config, args.config_file_path.as_ref())?;
     }
 
     Ok(())
+}
+
+/// Creates a UTC datetime at the start of day (00:00:00) for a date offset from now
+fn day_start_utc(now: DateTime<Utc>, day_offset: i64) -> DateTime<Utc> {
+    let date = (now + chrono::Duration::days(day_offset))
+        .date_naive()
+        .and_hms_opt(0, 0, 0)
+        .unwrap();
+    Utc.from_utc_datetime(&date)
+}
+
+/// Creates a UTC datetime at the end of day (23:59:59) for a date offset from now
+fn day_end_utc(now: DateTime<Utc>, day_offset: i64) -> DateTime<Utc> {
+    let date = (now + chrono::Duration::days(day_offset))
+        .date_naive()
+        .and_hms_opt(23, 59, 59)
+        .unwrap();
+    Utc.from_utc_datetime(&date)
 }

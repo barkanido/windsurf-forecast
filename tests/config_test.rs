@@ -4,12 +4,13 @@
 //
 // Tests for configuration file handling, precedence rules, and validation.
 
-use tempfile::NamedTempFile;
 use std::io::Write;
-use windsurf_forecast::config::{
-    Config, GeneralConfig, TimezoneConfig,
-    load_config, save_config, get_default_config_path
+use tempfile::NamedTempFile;
+use windsurf_forecast::config::loader::{
+    get_default_config_path, load_config_from_file, save_config, Config, GeneralConfig,
 };
+use windsurf_forecast::config::resolver::{resolve_coordinates, validate_coordinates};
+use windsurf_forecast::config::timezone::TimezoneConfig;
 
 // ============================================================================
 // Test Pattern 1: Config File Loading
@@ -18,16 +19,20 @@ use windsurf_forecast::config::{
 #[test]
 fn test_load_config_from_valid_file() {
     let mut temp_file = NamedTempFile::new().unwrap();
-    write!(temp_file, r#"
+    write!(
+        temp_file,
+        r#"
 [general]
 lat = 32.486722
 lng = 34.888722
 timezone = "Asia/Jerusalem"
 default_provider = "stormglass"
-    "#).unwrap();
-    
-    let result = load_config(Some(&temp_file.path().to_path_buf()));
-    
+    "#
+    )
+    .unwrap();
+
+    let result = load_config_from_file(Some(&temp_file.path().to_path_buf()));
+
     assert!(result.is_ok(), "Should load valid config file");
     let config = result.unwrap();
     assert_eq!(config.general.lat, Some(32.486722));
@@ -39,28 +44,38 @@ default_provider = "stormglass"
 #[test]
 fn test_load_config_missing_file_uses_defaults() {
     let nonexistent_path = std::path::PathBuf::from("/tmp/nonexistent_windsurf_config_12345.toml");
-    
-    let result = load_config(Some(&nonexistent_path));
-    
-    assert!(result.is_ok(), "Should create default config when file missing");
+
+    let result = load_config_from_file(Some(&nonexistent_path));
+
+    assert!(
+        result.is_ok(),
+        "Should create default config when file missing"
+    );
     let config = result.unwrap();
     assert_eq!(config.general.timezone, "UTC", "Should default to UTC");
     assert_eq!(config.general.default_provider, "stormglass");
-    assert!(config.general.lat.is_none(), "Coordinates should be None by default");
+    assert!(
+        config.general.lat.is_none(),
+        "Coordinates should be None by default"
+    );
     assert!(config.general.lng.is_none());
 }
 
 #[test]
 fn test_load_config_invalid_toml_returns_error() {
     let mut temp_file = NamedTempFile::new().unwrap();
-    write!(temp_file, r#"
+    write!(
+        temp_file,
+        r#"
 [general
 lat = "not a number"
 this is not valid TOML
-    "#).unwrap();
-    
-    let result = load_config(Some(&temp_file.path().to_path_buf()));
-    
+    "#
+    )
+    .unwrap();
+
+    let result = load_config_from_file(Some(&temp_file.path().to_path_buf()));
+
     assert!(result.is_err(), "Should reject invalid TOML");
     let error = result.unwrap_err();
     let error_msg = format!("{:#}", error);
@@ -77,87 +92,130 @@ this is not valid TOML
 
 #[test]
 fn test_cli_args_override_config_file_coordinates() {
-    use windsurf_forecast::config::resolve_coordinates;
-    
     let mut temp_file = NamedTempFile::new().unwrap();
-    write!(temp_file, r#"
+    write!(
+        temp_file,
+        r#"
 [general]
 lat = 32.486722
 lng = 34.888722
 timezone = "Asia/Jerusalem"
-    "#).unwrap();
-    
-    let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
-    
-    assert_eq!(config.general.lat, Some(32.486722), "Config should have Tel Aviv lat");
-    assert_eq!(config.general.lng, Some(34.888722), "Config should have Tel Aviv lng");
-    
+    "#
+    )
+    .unwrap();
+
+    let config = load_config_from_file(Some(&temp_file.path().to_path_buf())).unwrap();
+
+    assert_eq!(
+        config.general.lat,
+        Some(32.486722),
+        "Config should have Tel Aviv lat"
+    );
+    assert_eq!(
+        config.general.lng,
+        Some(34.888722),
+        "Config should have Tel Aviv lng"
+    );
+
     let cli_lat = Some(40.7128);
     let cli_lng = Some(-74.0060);
     let result = resolve_coordinates(cli_lat, cli_lng, &config);
-    
+
     assert!(result.is_ok(), "Should successfully resolve coordinates");
     let (final_lat, final_lng) = result.unwrap();
-    assert_eq!(final_lat, 40.7128, "CLI lat should override config lat (32.486722 → 40.7128)");
-    assert_eq!(final_lng, -74.0060, "CLI lng should override config lng (34.888722 → -74.0060)");
-    
-    assert_ne!(final_lat, config.general.lat.unwrap(), "Should not be using config lat");
-    assert_ne!(final_lng, config.general.lng.unwrap(), "Should not be using config lng");
+    assert_eq!(
+        final_lat, 40.7128,
+        "CLI lat should override config lat (32.486722 → 40.7128)"
+    );
+    assert_eq!(
+        final_lng, -74.0060,
+        "CLI lng should override config lng (34.888722 → -74.0060)"
+    );
+
+    assert_ne!(
+        final_lat,
+        config.general.lat.unwrap(),
+        "Should not be using config lat"
+    );
+    assert_ne!(
+        final_lng,
+        config.general.lng.unwrap(),
+        "Should not be using config lng"
+    );
 }
 
 #[test]
 fn test_cli_timezone_overrides_config_file() {
-    let cli_timezone = Some("America/New_York".to_string());
-    let config_timezone = Some("Asia/Jerusalem".to_string());
-    
+    let cli_timezone = Some("America/New_York");
+    let config_timezone = Some("Asia/Jerusalem");
+
     let result = TimezoneConfig::load_with_precedence(cli_timezone, config_timezone);
-    
+
     assert!(result.is_ok());
     let tz_config = result.unwrap();
     assert_eq!(tz_config.timezone.name(), "America/New_York");
-    assert!(tz_config.explicit, "Should be marked as explicit when from CLI");
+    assert!(
+        tz_config.explicit,
+        "Should be marked as explicit when from CLI"
+    );
 }
 
 #[test]
 fn test_config_file_coordinates_used_when_cli_not_provided() {
-    use windsurf_forecast::config::resolve_coordinates;
-    
     let mut temp_file = NamedTempFile::new().unwrap();
-    write!(temp_file, r#"
+    write!(
+        temp_file,
+        r#"
 [general]
 lat = 32.486722
 lng = 34.888722
-    "#).unwrap();
-    
-    let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
-    
+    "#
+    )
+    .unwrap();
+
+    let config = load_config_from_file(Some(&temp_file.path().to_path_buf())).unwrap();
+
     let cli_lat: Option<f64> = None;
     let cli_lng: Option<f64> = None;
     let result = resolve_coordinates(cli_lat, cli_lng, &config);
-    
-    assert!(result.is_ok(), "Should successfully resolve coordinates from config");
+
+    assert!(
+        result.is_ok(),
+        "Should successfully resolve coordinates from config"
+    );
     let (final_lat, final_lng) = result.unwrap();
-    assert_eq!(final_lat, 32.486722, "Should use config lat when CLI not provided");
-    assert_eq!(final_lng, 34.888722, "Should use config lng when CLI not provided");
+    assert_eq!(
+        final_lat, 32.486722,
+        "Should use config lat when CLI not provided"
+    );
+    assert_eq!(
+        final_lng, 34.888722,
+        "Should use config lng when CLI not provided"
+    );
 }
 
 #[test]
 fn test_missing_coordinates_returns_error() {
-    use windsurf_forecast::config::resolve_coordinates;
-    
     let mut temp_file = NamedTempFile::new().unwrap();
-    write!(temp_file, r#"
+    write!(
+        temp_file,
+        r#"
 [general]
 timezone = "UTC"
-    "#).unwrap();
-    
-    let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
-    
+    "#
+    )
+    .unwrap();
+
+    let config = load_config_from_file(Some(&temp_file.path().to_path_buf())).unwrap();
+
     let cli_lat: Option<f64> = None;
     let cli_lng: Option<f64> = None;
     let result = resolve_coordinates(cli_lat, cli_lng, &config);
-    
-    assert!(result.is_err(), "Should fail when neither CLI nor config provide coordinates");
+
+    assert!(
+        result.is_err(),
+        "Should fail when neither CLI nor config provide coordinates"
+    );
     let err_msg = result.unwrap_err().to_string();
     assert!(
         err_msg.contains("Latitude") || err_msg.contains("--lat"),
@@ -181,16 +239,19 @@ fn test_save_config_persists_to_file() {
             lng: Some(34.888722),
         },
     };
-    
+
     let result = save_config(&config, Some(&temp_file.path().to_path_buf()));
-    
+
     assert!(result.is_ok(), "Should save config successfully");
-    
-    let reloaded = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
+
+    let reloaded = load_config_from_file(Some(&temp_file.path().to_path_buf())).unwrap();
     assert_eq!(reloaded.general.lat, config.general.lat);
     assert_eq!(reloaded.general.lng, config.general.lng);
     assert_eq!(reloaded.general.timezone, config.general.timezone);
-    assert_eq!(reloaded.general.default_provider, config.general.default_provider);
+    assert_eq!(
+        reloaded.general.default_provider,
+        config.general.default_provider
+    );
 }
 
 #[test]
@@ -204,12 +265,15 @@ fn test_save_load_roundtrip_preserves_values() {
             lng: Some(-0.1278),
         },
     };
-    
+
     save_config(&original, Some(&temp_file.path().to_path_buf())).unwrap();
-    let loaded = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
-    
+    let loaded = load_config_from_file(Some(&temp_file.path().to_path_buf())).unwrap();
+
     assert_eq!(loaded.general.timezone, original.general.timezone);
-    assert_eq!(loaded.general.default_provider, original.general.default_provider);
+    assert_eq!(
+        loaded.general.default_provider,
+        original.general.default_provider
+    );
     assert_eq!(loaded.general.lat, original.general.lat);
     assert_eq!(loaded.general.lng, original.general.lng);
 }
@@ -220,38 +284,44 @@ fn test_save_load_roundtrip_preserves_values() {
 
 #[test]
 fn test_coordinate_validation_accepts_valid_coordinates() {
-    use windsurf_forecast::config::{resolve_coordinates, validate_coordinates};
-    
     let valid_coordinates = vec![
-        (32.486722, 34.888722),   // Tel Aviv
-        (40.7128, -74.0060),      // New York
-        (-33.8688, 151.2093),     // Sydney
-        (0.0, 0.0),               // Equator/Prime Meridian
-        (90.0, 180.0),            // Max bounds
-        (-90.0, -180.0),          // Min bounds
+        (32.486722, 34.888722), // Tel Aviv
+        (40.7128, -74.0060),    // New York
+        (-33.8688, 151.2093),   // Sydney
+        (0.0, 0.0),             // Equator/Prime Meridian
+        (90.0, 180.0),          // Max bounds
+        (-90.0, -180.0),        // Min bounds
     ];
-    
+
     let mut temp_file = NamedTempFile::new().unwrap();
-    write!(temp_file, r#"
+    write!(
+        temp_file,
+        r#"
 [general]
 timezone = "UTC"
-    "#).unwrap();
-    let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
-    
+    "#
+    )
+    .unwrap();
+    let config = load_config_from_file(Some(&temp_file.path().to_path_buf())).unwrap();
+
     for (lat, lng) in valid_coordinates {
         let validation_result = validate_coordinates(lat, lng);
         assert!(
             validation_result.is_ok(),
             "Should accept valid coordinates ({}, {}): {:?}",
-            lat, lng, validation_result
+            lat,
+            lng,
+            validation_result
         );
-        
+
         // Test resolve_coordinates (which calls validate_coordinates)
         let result = resolve_coordinates(Some(lat), Some(lng), &config);
         assert!(
             result.is_ok(),
             "Should accept valid coordinates ({}, {}): {:?}",
-            lat, lng, result
+            lat,
+            lng,
+            result
         );
         let (resolved_lat, resolved_lng) = result.unwrap();
         assert_eq!(resolved_lat, lat, "Latitude should be preserved");
@@ -261,84 +331,90 @@ timezone = "UTC"
 
 #[test]
 fn test_coordinate_validation_rejects_out_of_bounds_latitude() {
-    use windsurf_forecast::config::{resolve_coordinates, validate_coordinates};
-    
     let invalid_latitudes = vec![
-        (91.0, 0.0),      // Latitude too high (valid: -90 to 90)
-        (-91.0, 0.0),     // Latitude too low
-        (100.0, 34.0),    // Way out of bounds
+        (91.0, 0.0),   // Latitude too high (valid: -90 to 90)
+        (-91.0, 0.0),  // Latitude too low
+        (100.0, 34.0), // Way out of bounds
     ];
-    
+
     let mut temp_file = NamedTempFile::new().unwrap();
-    write!(temp_file, r#"
+    write!(
+        temp_file,
+        r#"
 [general]
 timezone = "UTC"
-    "#).unwrap();
-    let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
-    
+    "#
+    )
+    .unwrap();
+    let config = load_config_from_file(Some(&temp_file.path().to_path_buf())).unwrap();
+
     for (lat, lng) in invalid_latitudes {
         let validation_result = validate_coordinates(lat, lng);
         assert!(
             validation_result.is_err(),
-            "Should reject invalid latitude {}", lat
+            "Should reject invalid latitude {}",
+            lat
         );
         let err_msg = validation_result.unwrap_err().to_string();
         assert!(
             err_msg.contains("Latitude") && err_msg.contains("-90.0") && err_msg.contains("90.0"),
-            "Error should mention latitude range: {}", err_msg
+            "Error should mention latitude range: {}",
+            err_msg
         );
-        
+
         let result = resolve_coordinates(Some(lat), Some(lng), &config);
-        assert!(
-            result.is_err(),
-            "Should reject invalid latitude {}", lat
-        );
+        assert!(result.is_err(), "Should reject invalid latitude {}", lat);
         let err_msg = result.unwrap_err().to_string();
         assert!(
             err_msg.contains("Latitude"),
-            "Error should mention latitude: {}", err_msg
+            "Error should mention latitude: {}",
+            err_msg
         );
     }
 }
 
 #[test]
 fn test_coordinate_validation_rejects_out_of_bounds_longitude() {
-    use windsurf_forecast::config::{resolve_coordinates, validate_coordinates};
-    
     let invalid_longitudes = vec![
-        (0.0, 181.0),     // Longitude too high (valid: -180 to 180)
-        (0.0, -181.0),    // Longitude too low
-        (32.0, 200.0),    // Way out of bounds
+        (0.0, 181.0),  // Longitude too high (valid: -180 to 180)
+        (0.0, -181.0), // Longitude too low
+        (32.0, 200.0), // Way out of bounds
     ];
-    
+
     let mut temp_file = NamedTempFile::new().unwrap();
-    write!(temp_file, r#"
+    write!(
+        temp_file,
+        r#"
 [general]
 timezone = "UTC"
-    "#).unwrap();
-    let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
-    
+    "#
+    )
+    .unwrap();
+    let config = load_config_from_file(Some(&temp_file.path().to_path_buf())).unwrap();
+
     for (lat, lng) in invalid_longitudes {
         let validation_result = validate_coordinates(lat, lng);
         assert!(
             validation_result.is_err(),
-            "Should reject invalid longitude {}", lng
+            "Should reject invalid longitude {}",
+            lng
         );
         let err_msg = validation_result.unwrap_err().to_string();
         assert!(
-            err_msg.contains("Longitude") && err_msg.contains("-180.0") && err_msg.contains("180.0"),
-            "Error should mention longitude range: {}", err_msg
+            err_msg.contains("Longitude")
+                && err_msg.contains("-180.0")
+                && err_msg.contains("180.0"),
+            "Error should mention longitude range: {}",
+            err_msg
         );
-        
+
         let result = resolve_coordinates(Some(lat), Some(lng), &config);
-        assert!(
-            result.is_err(),
-            "Should reject invalid longitude {}", lng
-        );
+        assert!(result.is_err(), "Should reject invalid longitude {}", lng);
         let err_msg = result.unwrap_err().to_string();
         assert!(
             err_msg.contains("Longitude"),
-            "Error should mention longitude: {}", err_msg
+            "Error should mention longitude: {}",
+            err_msg
         );
     }
 }
@@ -346,13 +422,17 @@ timezone = "UTC"
 #[test]
 fn test_missing_coordinates_detection() {
     let mut temp_file = NamedTempFile::new().unwrap();
-    write!(temp_file, r#"
+    write!(
+        temp_file,
+        r#"
 [general]
 timezone = "UTC"
-    "#).unwrap();
-    
-    let config = load_config(Some(&temp_file.path().to_path_buf())).unwrap();
-    
+    "#
+    )
+    .unwrap();
+
+    let config = load_config_from_file(Some(&temp_file.path().to_path_buf())).unwrap();
+
     assert!(config.general.lat.is_none(), "Lat should be None");
     assert!(config.general.lng.is_none(), "Lng should be None");
 }
@@ -364,11 +444,14 @@ timezone = "UTC"
 #[test]
 fn test_default_config_path_contains_home_directory() {
     let result = get_default_config_path();
-    
-    assert!(result.is_ok(), "Should be able to determine default config path");
+
+    assert!(
+        result.is_ok(),
+        "Should be able to determine default config path"
+    );
     let path = result.unwrap();
     let path_str = path.to_string_lossy();
-    
+
     assert!(
         path_str.contains("windsurf-config.toml"),
         "Default config path should include correct filename: {:?}",
@@ -379,7 +462,7 @@ fn test_default_config_path_contains_home_directory() {
 #[test]
 fn test_default_config_path_is_absolute() {
     let result = get_default_config_path();
-    
+
     if let Ok(path) = result {
         assert!(
             path.is_absolute() || path.file_name().is_some(),
@@ -394,48 +477,49 @@ fn test_default_config_path_is_absolute() {
 
 #[test]
 fn test_timezone_precedence_cli_over_config() {
-    let result = TimezoneConfig::load_with_precedence(
-        Some("America/New_York".to_string()),
-        Some("Asia/Jerusalem".to_string())
-    );
-    
+    let result =
+        TimezoneConfig::load_with_precedence(Some("America/New_York"), Some("Asia/Jerusalem"));
+
     assert!(result.is_ok());
     let config = result.unwrap();
     assert_eq!(config.timezone.name(), "America/New_York");
-    assert!(config.explicit, "Should be marked as explicit when from CLI");
+    assert!(
+        config.explicit,
+        "Should be marked as explicit when from CLI"
+    );
 }
 
 #[test]
 fn test_timezone_precedence_config_over_default() {
-    let result = TimezoneConfig::load_with_precedence(
-        None,
-        Some("Asia/Jerusalem".to_string())
-    );
-    
+    let result = TimezoneConfig::load_with_precedence(None, Some("Asia/Jerusalem"));
+
     assert!(result.is_ok());
     let config = result.unwrap();
     assert_eq!(config.timezone.name(), "Asia/Jerusalem");
-    assert!(config.explicit, "Should be marked as explicit when from config");
+    assert!(
+        config.explicit,
+        "Should be marked as explicit when from config"
+    );
 }
 
 #[test]
 fn test_timezone_defaults_to_utc_when_not_specified() {
     let result = TimezoneConfig::load_with_precedence(None, None);
-    
+
     assert!(result.is_ok());
     let config = result.unwrap();
     assert_eq!(config.timezone.name(), "UTC");
-    assert!(!config.explicit, "Should not be marked as explicit for default");
+    assert!(
+        !config.explicit,
+        "Should not be marked as explicit for default"
+    );
 }
 
 #[test]
 fn test_timezone_config_ignores_utc_in_config() {
     // When config has default UTC, it should be treated as "not set"
-    let result = TimezoneConfig::load_with_precedence(
-        None,
-        Some("UTC".to_string())
-    );
-    
+    let result = TimezoneConfig::load_with_precedence(None, Some("UTC"));
+
     assert!(result.is_ok());
     let config = result.unwrap();
     assert_eq!(config.timezone.name(), "UTC");
@@ -445,20 +529,17 @@ fn test_timezone_config_ignores_utc_in_config() {
 
 #[test]
 fn test_invalid_timezone_returns_helpful_error() {
-    let result = TimezoneConfig::load_with_precedence(
-        Some("InvalidTimezone".to_string()),
-        None
-    );
-    
+    let result = TimezoneConfig::load_with_precedence(Some("InvalidTimezone"), None);
+
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
-    
+
     assert!(
-        err_msg.contains("UTC") || 
-        err_msg.contains("America") || 
-        err_msg.contains("Asia") ||
-        err_msg.contains("example") ||
-        err_msg.contains("Examples"),
+        err_msg.contains("UTC")
+            || err_msg.contains("America")
+            || err_msg.contains("Asia")
+            || err_msg.contains("example")
+            || err_msg.contains("Examples"),
         "Error message should include examples of valid timezones: {}",
         err_msg
     );
@@ -466,20 +547,17 @@ fn test_invalid_timezone_returns_helpful_error() {
 
 #[test]
 fn test_local_timezone_special_value() {
-    let result = TimezoneConfig::load_with_precedence(
-        Some("LOCAL".to_string()),
-        None
-    );
-    
+    let result = TimezoneConfig::load_with_precedence(Some("LOCAL"), None);
+
     if let Ok(config) = result {
         assert!(config.explicit, "LOCAL should be marked as explicit choice");
         println!("Detected system timezone: {}", config.timezone.name());
     } else {
         let err = result.unwrap_err().to_string();
         assert!(
-            err.to_lowercase().contains("timezone") || 
-            err.to_lowercase().contains("detect") ||
-            err.to_lowercase().contains("system"),
+            err.to_lowercase().contains("timezone")
+                || err.to_lowercase().contains("detect")
+                || err.to_lowercase().contains("system"),
             "Error should be about timezone detection: {}",
             err
         );
@@ -500,10 +578,10 @@ fn test_config_serialization_format() {
             lng: Some(34.888722),
         },
     };
-    
+
     let toml_string = toml::to_string_pretty(&config);
     assert!(toml_string.is_ok(), "Should serialize to TOML");
-    
+
     let toml = toml_string.unwrap();
     assert!(toml.contains("[general]"));
     assert!(toml.contains("timezone"));
@@ -513,14 +591,18 @@ fn test_config_serialization_format() {
 #[test]
 fn test_config_with_missing_optional_fields() {
     let mut temp_file = NamedTempFile::new().unwrap();
-    write!(temp_file, r#"
+    write!(
+        temp_file,
+        r#"
 [general]
 timezone = "UTC"
-    "#).unwrap();
-    
-    let result = load_config(Some(&temp_file.path().to_path_buf()));
+    "#
+    )
+    .unwrap();
+
+    let result = load_config_from_file(Some(&temp_file.path().to_path_buf()));
     assert!(result.is_ok());
-    
+
     let config = result.unwrap();
     assert!(config.general.lat.is_none());
     assert!(config.general.lng.is_none());

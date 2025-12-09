@@ -90,6 +90,17 @@ pub struct ResolvedConfig {
     pub first_day_offset: i32,
 }
 
+impl fmt::Display for ResolvedConfig {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "📋 Configuration:")?;
+        writeln!(f, "   Provider: {}", self.provider)?;
+        writeln!(f, "   Days ahead: {}", self.days_ahead)?;
+        writeln!(f, "   First day offset: {}", self.first_day_offset)?;
+        writeln!(f, "   Timezone: {}", self.timezone.name())?;
+        write!(f, "   Coordinates: ({:.6}, {:.6})", self.lat, self.lng)
+    }
+}
+
 /// Raw input sources before precedence resolution
 ///
 /// `Option<T>` values enable source tracking for better error messages.

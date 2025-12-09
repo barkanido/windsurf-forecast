@@ -4,7 +4,7 @@
 //
 // Tests for timezone handling, conversion accuracy, and timestamp serialization.
 
-use windsurf_forecast::config::TimezoneConfig;
+use windsurf_forecast::config::timezone::TimezoneConfig;
 use windsurf_forecast::test_utils::*;
 use windsurf_forecast::forecast_provider::{convert_timezone, UtcTimestamp};
 use chrono::Timelike;
@@ -154,10 +154,10 @@ fn test_invalid_timezone_identifier_returns_error() {
 
 #[test]
 fn test_timezone_config_from_string_provides_helpful_error() {
-    use windsurf_forecast::config::TimezoneConfig;
+    use windsurf_forecast::config::timezone::TimezoneConfig;
     
     let result = TimezoneConfig::load_with_precedence(
-        Some("InvalidTimezone".to_string()),
+        Some("InvalidTimezone"),
         None
     );
     
@@ -173,8 +173,8 @@ fn test_timezone_config_from_string_provides_helpful_error() {
 #[test]
 fn test_timezone_precedence_cli_over_config() {
     let result = TimezoneConfig::load_with_precedence(
-        Some("America/New_York".to_string()),
-        Some("Asia/Jerusalem".to_string())
+        Some("America/New_York"),
+        Some("Asia/Jerusalem")
     );
     
     assert!(result.is_ok());
@@ -187,7 +187,7 @@ fn test_timezone_precedence_cli_over_config() {
 fn test_timezone_precedence_config_over_default() {
     let result = TimezoneConfig::load_with_precedence(
         None,
-        Some("Asia/Jerusalem".to_string())
+        Some("Asia/Jerusalem")
     );
     
     assert!(result.is_ok());
@@ -214,7 +214,7 @@ fn test_timezone_precedence_ignores_utc_in_config() {
     // When config has default UTC, it should be treated as "not set"
     let result = TimezoneConfig::load_with_precedence(
         None,
-        Some("UTC".to_string())
+        Some("UTC")
     );
     
     assert!(result.is_ok());
@@ -226,7 +226,7 @@ fn test_timezone_precedence_ignores_utc_in_config() {
 #[test]
 fn test_local_timezone_special_value() {
     let result = TimezoneConfig::load_with_precedence(
-        Some("LOCAL".to_string()),
+        Some("LOCAL"),
         None
     );
     

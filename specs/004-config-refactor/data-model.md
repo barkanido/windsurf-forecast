@@ -380,7 +380,7 @@ src/config/
 └── timezone.rs         # Timezone-specific configuration
     ├── TimezoneConfig
     ├── detect_system_timezone() -> Tz
-    ├── validate_timezone_coordinates(tz, lat, lng)
+    ├── check_timezone_match(tz, lat, lng)
     └── pick_timezone_interactive() -> String
 ```
 

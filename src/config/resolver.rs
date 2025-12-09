@@ -85,7 +85,7 @@
 use anyhow::{anyhow, Result};
 use crate::args::Args;
 use super::types::{ResolvedConfig, ConfigSource};
-use super::loader::{Config, load_config};
+use super::loader::{Config, load_config_from_file};
 use super::timezone::TimezoneConfig;
 
 /// Resolve a single configuration value using precedence rules
@@ -196,11 +196,11 @@ pub fn validate_date_range(days_ahead: i32, first_day_offset: i32) -> Result<()>
 }
 
 pub fn resolve_from_args_and_file(args: &Args) -> Result<ResolvedConfig> {
-    let config = load_config(args.config.as_ref())?;
+    let config = load_config_from_file(args.config_file_path.as_ref())?;
     
     let timezone_config = TimezoneConfig::load_with_precedence(
-        args.timezone.clone(),
-        Some(config.general.timezone.clone()),
+        args.timezone.as_deref(),
+        Some(&config.general.timezone),
     )?;
     
     timezone_config.display_timezone_warning_if_default();
@@ -211,17 +211,15 @@ pub fn resolve_from_args_and_file(args: &Args) -> Result<ResolvedConfig> {
         &config,
     )?;
     
-    let provider = args.provider.clone();
-    
     let days_ahead = args.days_ahead;
     let first_day_offset = args.first_day_offset;
     
     validate_date_range(days_ahead, first_day_offset)?;
     
-    crate::args::validate_provider(&provider)?;
+    crate::provider_registry::validate_provider_name(&args.provider)?;
     
     Ok(ResolvedConfig {
-        provider,
+        provider: args.provider.clone(),
         timezone: timezone_config.timezone,
         lat,
         lng,

@@ -226,7 +226,7 @@ pub fn detect_system_timezone() -> Result<Tz> {
 /// - Non-blocking (returns false but doesn't error)
 ///
 /// SIGNATURE:
-/// pub fn validate_timezone_coordinates(tz: Tz, lat: f64, lng: f64) -> bool
+/// pub fn check_timezone_match(tz: Tz, lat: f64, lng: f64) -> bool
 ///
 /// OUTPUT (stderr, if mismatch):
 /// ```
@@ -239,7 +239,7 @@ pub fn detect_system_timezone() -> Result<Tz> {
 /// EXAMPLES:
 /// ```
 /// // Matching timezone and coordinates
-/// let valid = validate_timezone_coordinates(
+/// let valid = check_timezone_match(
 ///     chrono_tz::America::New_York,
 ///     40.7128,
 ///     -74.0060
@@ -247,14 +247,14 @@ pub fn detect_system_timezone() -> Result<Tz> {
 /// assert!(valid);
 ///
 /// // Mismatched timezone and coordinates (warning displayed)
-/// let valid = validate_timezone_coordinates(
+/// let valid = check_timezone_match(
 ///     chrono_tz::Europe::London,
 ///     40.7128,
 ///     -74.0060
 /// );
 /// assert!(!valid);  // Returns false but doesn't error
 /// ```
-pub fn validate_timezone_coordinates(tz: Tz, lat: f64, lng: f64) -> bool {
+pub fn check_timezone_match(tz: Tz, lat: f64, lng: f64) -> bool {
     let finder = tzf_rs::DefaultFinder::new();
     let detected_tz = finder.get_tz_name(lng, lat);
     
@@ -342,7 +342,7 @@ pub mod exports {
     pub use super::{
         TimezoneConfig,
         detect_system_timezone,
-        validate_timezone_coordinates,
+        check_timezone_match,
         pick_timezone_interactive,
     };
 }

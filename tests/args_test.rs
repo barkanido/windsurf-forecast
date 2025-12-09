@@ -5,7 +5,8 @@
 // Tests for command-line argument parsing and validation logic.
 // Covers valid combinations, boundary conditions, and error cases.
 
-use windsurf_forecast::args::{validate_args, validate_provider};
+use windsurf_forecast::args::validate_args;
+use windsurf_forecast::provider_registry::validate_provider_name;
 use windsurf_forecast::test_utils::*;
 
 #[test]
@@ -107,7 +108,7 @@ fn test_first_day_offset_exceeds_7_returns_error() {
 
 #[test]
 fn test_unknown_provider_returns_error() {
-    let result = validate_provider("nonexistent_provider");
+    let result = validate_provider_name("nonexistent_provider");
     assert!(result.is_err(), "Unknown provider should fail");
     
     let err_msg = result.unwrap_err().to_string();
@@ -119,8 +120,8 @@ fn test_unknown_provider_returns_error() {
 
 #[test]
 fn test_known_providers_validate_successfully() {
-    assert!(validate_provider("stormglass").is_ok());
-    assert!(validate_provider("openweathermap").is_ok());
+    assert!(validate_provider_name("stormglass").is_ok());
+    assert!(validate_provider_name("openweathermap").is_ok());
 }
 
 // ============================================================================

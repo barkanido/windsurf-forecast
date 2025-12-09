@@ -47,7 +47,7 @@
 - [x] T010 [P] Implement loader.rs: Move get_default_config_path() function from src/config.rs
 - [x] T011 [P] Implement timezone.rs: Move TimezoneConfig from src/config.rs per contracts/timezone_contract.rs
 - [x] T012 [P] Implement timezone.rs: Move detect_system_timezone() from src/config.rs
-- [x] T013 [P] Implement timezone.rs: Move validate_timezone_coordinates() from src/config.rs
+- [x] T013 [P] Implement timezone.rs: Move check_timezone_match() from src/config.rs
 - [x] T014 [P] Implement timezone.rs: Move pick_timezone_interactive() from src/config.rs
 - [x] T015 Update src/config/mod.rs with public exports for all submodules
 
@@ -311,7 +311,7 @@ Task T010: "Implement loader.rs: Move get_default_config_path()"
 # Launch all timezone.rs tasks together:
 Task T011: "Implement timezone.rs: Move TimezoneConfig"
 Task T012: "Implement timezone.rs: Move detect_system_timezone()"
-Task T013: "Implement timezone.rs: Move validate_timezone_coordinates()"
+Task T013: "Implement timezone.rs: Move check_timezone_match()"
 Task T014: "Implement timezone.rs: Move pick_timezone_interactive()"
 ```
 

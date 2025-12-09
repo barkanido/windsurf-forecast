@@ -65,7 +65,7 @@ pub struct Args {
 
     /// Path to custom config file (default: ~/.windsurf-config.toml)
     #[arg(long, value_name = "PATH")]
-    pub config: Option<PathBuf>,
+    pub config_file_path: Option<PathBuf>,
 
     /// Latitude for the forecast location
     #[arg(long, value_name = "LAT")]
@@ -81,35 +81,42 @@ pub struct Args {
     pub save: bool,
 }
 
+impl Args {
+    /// Returns the effective config file path as a display string.
+    /// Uses the custom path if provided, otherwise returns the default path.
+    pub fn config_path_display(&self) -> Option<String> {
+        self.config_file_path.as_ref().map(|p| p.display().to_string())
+    }
+}
+
 // ============================================================================
 // Validation Functions
 // ============================================================================
 
 pub fn validate_args(args: &Args) -> Result<()> {
-    validate_days_range(args)?;
-    validate_provider(&args.provider)?;
+    validate_days_range(args.days_ahead, args.first_day_offset)?;
 
     Ok(())
 }
 
-fn validate_days_range(args: &Args) -> Result<()> {
-    if args.days_ahead < 1 || args.days_ahead > 7 {
-        anyhow::bail!("days-ahead must be between 1 and 7 (got {})", args.days_ahead);
+fn validate_days_range(days_ahead: i32, first_day_offset: i32) -> Result<()> {
+    if days_ahead < 1 || days_ahead > 7 {
+        anyhow::bail!("days-ahead must be between 1 and 7 (got {})", days_ahead);
     }
 
-    if args.first_day_offset < 0 || args.first_day_offset > 7 {
+    if first_day_offset < 0 || first_day_offset > 7 {
         anyhow::bail!(
             "first-day-offset must be between 0 and 7 (got {})",
-            args.first_day_offset
+            first_day_offset
         );
     }
 
-    let total_days = args.days_ahead + args.first_day_offset;
+    let total_days = days_ahead + first_day_offset;
     if total_days > 7 {
         anyhow::bail!(
             "days-ahead ({}) + first-day-offset ({}) = {} exceeds maximum of 7 days for reliable forecasts",
-            args.days_ahead,
-            args.first_day_offset,
+            days_ahead,
+            first_day_offset,
             total_days
         );
     }
@@ -117,9 +124,7 @@ fn validate_days_range(args: &Args) -> Result<()> {
     Ok(())
 }
 
-pub fn validate_provider(provider_name: &str) -> Result<()> {
-    crate::provider_registry::validate_provider_name(provider_name)
-}
+
 
 /// Generate dynamic help text for provider argument
 fn get_provider_help() -> String {

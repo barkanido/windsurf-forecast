@@ -30,7 +30,7 @@ pub fn create_valid_args() -> Args {
         timezone: Some("UTC".to_string()),
         pick_timezone: false,
         list_providers: false,
-        config: None,
+        config_file_path: None,
         lat: Some(32.486722),
         lng: Some(34.888722),
         save: false,

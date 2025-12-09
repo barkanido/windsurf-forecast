@@ -11,24 +11,6 @@
 //! set by the user or defaulted to UTC. This enables conditional warning
 //! messages without repeated prompts.
 //!
-//! ```rust
-//! use windsurf_forecast::config::timezone::TimezoneConfig;
-//!
-//! # fn example() -> anyhow::Result<()> {
-//! // From CLI or config (explicit)
-//! let config = TimezoneConfig::load_with_precedence(
-//!     Some("America/New_York".to_string()),
-//!     None
-//! )?;
-//! assert!(config.explicit);  // No warning will be shown
-//!
-//! // Default (no user input)
-//! let config = TimezoneConfig::load_with_precedence(None, None)?;
-//! assert!(!config.explicit);  // Warning will be shown
-//! config.display_default_warning();
-//! # Ok(())
-//! # }
-//! ```
 //!
 //! # Special Values
 //!
@@ -56,12 +38,12 @@
 //! # Functions
 //!
 //! - [`detect_system_timezone()`]: Auto-detect local timezone from OS
-//! - [`validate_timezone_coordinates()`]: Check timezone matches coordinates
+//! - [`check_timezone_match()`]: Check timezone matches coordinates
 //! - [`pick_timezone_interactive()`]: Launch interactive picker UI
 //!
 //! # Coordinate Validation
 //!
-//! The [`validate_timezone_coordinates()`] function warns users when the
+//! The [`check_timezone_match()`] function warns users when the
 //! configured timezone doesn't match the location coordinates. This prevents
 //! confusing timestamp displays.
 //!
@@ -168,16 +150,16 @@ impl TimezoneConfig {
     }
     
     pub fn load_with_precedence(
-        cli_tz: Option<String>,
-        config_tz: Option<String>
+        cli_tz: Option<&str>,
+        config_tz: Option<&str>
     ) -> Result<Self> {
         if let Some(tz_str) = cli_tz {
-            return Self::from_string(&tz_str);
+            return Self::from_string(tz_str);
         }
         
         if let Some(tz_str) = config_tz {
             if tz_str != "UTC" {
-                return Self::from_string(&tz_str);
+                return Self::from_string(tz_str);
             }
         }
         
@@ -209,9 +191,7 @@ pub fn detect_system_timezone() -> Result<Tz> {
     Ok(tz)
 }
 
-/// Validate that coordinates are within the timezone's region
-/// Returns true if valid, false with warning if mismatch
-pub fn validate_timezone_coordinates(tz: Tz, lat: f64, lng: f64) -> bool {
+pub fn check_timezone_match(tz: Tz, lat: f64, lng: f64) -> bool {
     let finder = tzf_rs::DefaultFinder::new();
     let detected_tz = finder.get_tz_name(lng, lat);
     

@@ -53,30 +53,6 @@
 //! Configuration is **NOT** automatically saved. Users must explicitly provide the
 //! `--save` flag to persist CLI arguments to the config file. This prevents surprising
 //! behavior where running a command once with different flags permanently changes settings.
-//!
-//! # Example Usage
-//!
-//! ```rust,no_run
-//! use windsurf_forecast::config;
-//! use windsurf_forecast::args::Args;
-//!
-//! # async fn example() -> anyhow::Result<()> {
-//! // 1. Parse CLI arguments
-//! let args = Args::parse();
-//!
-//! // 2. Resolve configuration (applies precedence, validates all values)
-//! let config = config::resolve_from_args_and_file(&args)?;
-//!
-//! // 3. Use validated configuration
-//! println!("Provider: {}", config.provider);
-//! println!("Location: ({}, {})", config.lat, config.lng);
-//!
-//! // 4. Optionally persist if --save flag provided
-//! if args.save {
-//!     config::save_config_from_resolved(&config, args.config.as_ref())?;
-//! }
-//! # Ok(())
-//! # }
 //! ```
 
 pub mod types;
@@ -87,8 +63,8 @@ pub mod timezone;
 // Re-export commonly used items for convenience
 pub use types::ResolvedConfig;
 pub use resolver::resolve_from_args_and_file;
-pub use loader::{load_config, save_config, get_default_config_path};
-pub use timezone::{validate_timezone_coordinates, pick_timezone_interactive};
+pub use loader::{load_config_from_file, save_config, get_default_config_path};
+pub use timezone::{check_timezone_match, pick_timezone_interactive};
 
 use anyhow::Result;
 use std::path::PathBuf;

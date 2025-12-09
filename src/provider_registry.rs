@@ -7,25 +7,7 @@ use anyhow::{anyhow, Result};
 use crate::forecast_provider::ForecastProvider;
 use std::collections::HashMap;
 
-/// Metadata for a registered weather provider
-/// 
-/// This struct is submitted via `inventory::submit!()` in each provider module
-/// to register the provider with the central registry.
-/// 
-/// # Example Registration
-/// ```rust
-/// inventory::submit! {
-///     ProviderMetadata {
-///         name: "stormglass",
-///         description: "StormGlass Marine Weather API",
-///         api_key_var: "STORMGLASS_API_KEY",
-///         instantiate: || {
-///             let api_key = StormGlassProvider::get_api_key()?;
-///             Ok(Box::new(StormGlassProvider::new(api_key)))
-///         },
-///     }
-/// }
-/// ```
+
 pub struct ProviderMetadata {
     /// Unique identifier for the provider (e.g., "stormglass", "openweathermap")
     /// Must be lowercase alphanumeric with optional hyphens/underscores
@@ -54,83 +36,25 @@ pub struct ProviderMetadata {
 // Enable inventory collection of ProviderMetadata
 inventory::collect!(ProviderMetadata);
 
-/// Retrieve metadata for a specific provider by name
-/// 
-/// # Arguments
-/// * `name` - Provider identifier (e.g., "stormglass", "openweathermap")
-/// 
-/// # Returns
-/// * `Some(&'static ProviderMetadata)` if provider is registered
-/// * `None` if provider name is not found
-/// 
-/// # Example
-/// ```rust
-/// if let Some(meta) = get_provider_metadata("stormglass") {
-///     println!("Found provider: {}", meta.description);
-/// } else {
-///     eprintln!("Provider not registered");
-/// }
-/// ```
+
 pub fn get_provider_metadata(name: &str) -> Option<&'static ProviderMetadata> {
     inventory::iter::<ProviderMetadata>()
         .find(|meta| meta.name == name)
 }
 
-/// Iterator over all registered provider names
-/// 
-/// # Returns
-/// Iterator yielding provider names as `&'static str`
-/// 
-/// # Example
-/// ```rust
-/// for name in all_provider_names() {
-///     println!("Available: {}", name);
-/// }
-/// ```
+
 pub fn all_provider_names() -> impl Iterator<Item = &'static str> {
     inventory::iter::<ProviderMetadata>()
         .map(|meta| meta.name)
 }
 
-/// Iterator over all providers with (name, description) pairs
-/// 
-/// Useful for generating help text and documentation
-/// 
-/// # Returns
-/// Iterator yielding `(&'static str, &'static str)` tuples of (name, description)
-/// 
-/// # Example
-/// ```rust
-/// println!("Available providers:");
-/// for (name, desc) in all_provider_descriptions() {
-///     println!("  {}: {}", name, desc);
-/// }
-/// ```
+
 pub fn all_provider_descriptions() -> impl Iterator<Item = (&'static str, &'static str)> {
     inventory::iter::<ProviderMetadata>()
         .map(|meta| (meta.name, meta.description))
 }
 
-/// Create a provider instance by name
-/// 
-/// Looks up provider metadata and calls its `instantiate` function.
-/// 
-/// # Arguments
-/// * `name` - Provider identifier (e.g., "stormglass", "openweathermap")
-/// 
-/// # Returns
-/// * `Ok(Box<dyn ForecastProvider>)` on success
-/// * `Err(anyhow::Error)` if provider not found or instantiation fails
-/// 
-/// # Errors
-/// - Provider name not registered in the registry
-/// - Provider's `instantiate()` function returned an error (e.g., missing API key)
-/// 
-/// # Example
-/// ```rust
-/// let provider = create_provider("stormglass")?;
-/// let data = provider.fetch_weather_data(start, end, lat, lng).await?;
-/// ```
+
 pub fn create_provider(name: &str) -> Result<Box<dyn ForecastProvider>> {
     match get_provider_metadata(name) {
         Some(meta) => (meta.instantiate)(),
@@ -145,27 +69,7 @@ pub fn create_provider(name: &str) -> Result<Box<dyn ForecastProvider>> {
     }
 }
 
-/// Validate that a provider name exists in the registry
-/// 
-/// Used during CLI argument parsing to provide early validation and
-/// helpful error messages listing available providers.
-/// 
-/// # Arguments
-/// * `name` - Provider identifier to validate
-/// 
-/// # Returns
-/// * `Ok(())` if provider is registered
-/// * `Err(anyhow::Error)` with message listing available providers if not found
-/// 
-/// # Errors
-/// Returns error with format:
-/// "Unknown provider '{name}'. Available providers: provider1, provider2, ..."
-/// 
-/// # Example
-/// ```rust
-/// validate_provider_name(&args.provider)
-///     .context("Provider validation failed")?;
-/// ```
+
 pub fn validate_provider_name(name: &str) -> Result<()> {
     if get_provider_metadata(name).is_some() {
         Ok(())
