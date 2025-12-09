@@ -75,22 +75,21 @@ The application supports configurable timezones for displaying forecast timestam
 
 **Setting Timezone:**
 
-1. **Command Line Flag**:
+1. **Command Line Flag** (automatically persists to config file):
    ```bash
    # Use a specific timezone
    cargo run --release -- --timezone America/New_York
    # Or use short form:
    cargo run --release -- -z America/New_York
-   # Use system/local timezone
+   # Use system/local timezone (uppercase `LOCAL`)
    cargo run --release -- -z LOCAL
    ```
-   When you specify a timezone via CLI, it's automatically saved to your config file for future use.
 
-2. **Interactive Picker** (Recommended for first-time setup):
+2. **Interactive Picker** (automatically persists to config file):
    ```bash
    cargo run --release -- --pick-timezone
    ```
-   This launches a searchable, filterable list of all IANA timezones.
+   This launches a searchable, filterable list of all IANA timezones. Cannot be used together with `--timezone`.
 
 3. **Manual Config File**:
    Edit `~/.windsurf-config.toml`:
@@ -104,8 +103,10 @@ The application supports configurable timezones for displaying forecast timestam
 
 4. **Custom Config Location**:
    ```bash
-   cargo run --release -- --config /path/to/config.toml
+   cargo run --release -- --config-file-path /path/to/config.toml
    ```
+
+**Configuration Precedence:** CLI arguments override config file values, which override defaults.
 
 **Timezone Validation:**
 - The app validates that the configured timezone matches the location coordinates
@@ -128,14 +129,24 @@ Or run the compiled binary directly:
 
 ### Command Line Options
 
+#### Core Forecast Options
 - `--days-ahead <N>`: Number of days to forecast ahead (1-7, default: 4)
 - `--first-day-offset <N>`: Number of days to offset the start date (0-7, default: 0 for today)
 - `--provider <PROVIDER>`: Weather forecast provider to use (default: "stormglass")
+
+#### Timezone Options
 - `--timezone <TIMEZONE>`, `-z <TIMEZONE>`: Timezone for displaying timestamps (use "LOCAL" for system timezone, overrides and persists to config file)
-- `--pick-timezone`: Launch interactive timezone picker and save to config
-- `--lat <LAT>`: Latitude for the forecast location
-- `--lng <LNG>`: Longitude for the forecast location
-- `--config <PATH>`: Path to custom config file (default: ~/.windsurf-config.toml)
+- `--pick-timezone`: Launch interactive timezone picker and save to config (conflicts with `--timezone`)
+
+#### Location Options
+- `--lat <LAT>`: Latitude for the forecast location (required if not in config file, range: -90.0 to 90.0)
+- `--lng <LNG>`: Longitude for the forecast location (required if not in config file, range: -180.0 to 180.0)
+
+#### Configuration Options
+- `--config-file-path <PATH>`: Path to custom config file (default: ~/.windsurf-config.toml)
+- `--save`: Save configuration to file after successful execution (applies to provider, timezone, and coordinates)
+
+#### Information Options
 - `--list-providers`: List all available weather providers and exit
 - `--help`: Display help information
 
@@ -144,12 +155,20 @@ Or run the compiled binary directly:
 - `openweathermap` - OpenWeatherMap API
 - To add more providers, see [ADDING_PROVIDERS.md](ADDING_PROVIDERS.md)
 
-**Important:** The sum of `--days-ahead` and `--first-day-offset` must not exceed 7 to ensure reliable forecasts.
+**Important Constraints:**
+- The sum of `--days-ahead` and `--first-day-offset` must not exceed 7 to ensure reliable forecasts
+- Latitude must be between -90.0 and 90.0
+- Longitude must be between -180.0 and 180.0
+- `--pick-timezone` cannot be used together with `--timezone` flag
+- Coordinates must be provided either via CLI (`--lat`/`--lng`) or in config file
 
 ### Examples
 
+#### Basic Usage
+
 ```bash
 # Get 4-day forecast starting today with default provider (stormglass)
+# Note: Requires coordinates in config file or via --lat/--lng
 cargo run --release
 
 # Get 3-day forecast starting today
@@ -157,21 +176,36 @@ cargo run --release -- --days-ahead 3
 
 # Explicitly specify the provider
 cargo run --release -- --provider openweathermap --days-ahead 2
+```
 
-# Use a specific timezone (saves to config file)
+#### Timezone Configuration
+
+```bash
+# Use a specific timezone (automatically saves to config file)
 cargo run --release -- --timezone America/New_York
 # Or use short form
 cargo run --release -- -z America/New_York
 
-# Use system/local timezone (saves to config file)
+# Use system/local timezone (automatically saves to config file)
 cargo run --release -- -z LOCAL
 
-# Pick timezone interactively (saves to config file)
+# Pick timezone interactively (automatically saves to config file)
 cargo run --release -- --pick-timezone
+```
 
-# Specify custom coordinates
+#### Location Configuration
+
+```bash
+# Specify custom coordinates (required on first run if not in config)
 cargo run --release -- --lat 40.7128 --lng -74.0060
 
+# Specify coordinates and save them to config file for future use
+cargo run --release -- --lat 40.7128 --lng -74.0060 --save
+```
+
+#### Advanced Usage
+
+```bash
 # Get 2-day forecast starting 3 days from now
 cargo run --release -- --days-ahead 2 --first-day-offset 3
 
@@ -179,7 +213,17 @@ cargo run --release -- --days-ahead 2 --first-day-offset 3
 cargo run --release -- --days-ahead 5 --first-day-offset 1 --timezone Europe/London
 
 # Use custom config file location
-cargo run --release -- --config ./my-config.toml
+cargo run --release -- --config-file-path ./my-config.toml
+
+# Save current configuration (provider, timezone, coordinates) to file
+cargo run --release -- --provider openweathermap --timezone America/New_York --save
+```
+
+#### Information Commands
+
+```bash
+# List all available providers
+cargo run --release -- --list-providers
 
 # Get help and see all options
 cargo run --release -- --help
