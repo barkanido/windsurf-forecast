@@ -1,21 +1,20 @@
 # Weather Forecast Application
 
-A Rust binary for retrieving and processing weather forecast data from multiple weather API providers.
+A Rust command-line application for retrieving and processing weather forecast data from multiple weather API providers.
 
-This application uses a modular provider architecture, allowing easy integration of different weather APIs. Currently supports Storm Glass API, with the ability to add more providers.
+This application uses a modular provider architecture, allowing easy integration of different weather APIs. Currently supports StormGlass, OpenWeatherMap, and Windy.com providers.
 
 ## Features
 
-- Fetches weather forecast data from multiple weather API providers
-- Supports configurable forecast periods (1-7 days ahead)
-- Converts wind speeds from m/s to knots
-- Configurable timezone support with "LOCAL" option and interactive picker
-- Timezone settings are automatically persisted to config file
-- Validates timezone against location coordinates
-- Configurable location coordinates via CLI or config file
-- Outputs formatted JSON with metadata and unit descriptions
-- Comprehensive error handling with user-friendly messages
-- Command-line interface with validation
+- **Multiple Providers**: StormGlass, OpenWeatherMap, and Windy.com weather APIs
+- **Flexible Forecasting**: Configure forecast periods (1-7 days ahead) with offset support
+- **Unit Conversion**: Automatic wind speed conversion (provider-dependent)
+- **Timezone Support**: Configurable timezones with "LOCAL" option and interactive picker
+- **Persistent Configuration**: Automatic saving of timezone and location settings
+- **Location Validation**: Validates timezone against location coordinates
+- **JSON Output**: Formatted JSON with comprehensive metadata and unit descriptions
+- **Robust Error Handling**: User-friendly error messages for common API issues
+- **Extensible Architecture**: Easy addition of new weather providers
 
 ## Installation
 
@@ -48,21 +47,29 @@ See [AGENTS.md](AGENTS.md) for detailed testing commands and workflows.
 
 ### API Keys
 
-Each provider requires its own API key as an environment variable:
-- **Storm Glass**: `STORMGLASS_API_KEY`
-- **OpenWeatherMap**: `OPEN_WEATHER_MAP_API_KEY`
-- For other providers, see [ADDING_PROVIDERS.md](ADDING_PROVIDERS.md)
+Each provider requires its own API key configured as an environment variable:
 
-Create a `.env` file in the project root:
+| Provider | Environment Variable | Sign Up Link |
+|----------|---------------------|--------------|
+| **StormGlass** | `STORMGLASS_API_KEY` | https://stormglass.io/ |
+| **OpenWeatherMap** | `OPEN_WEATHER_MAP_API_KEY` | https://openweathermap.org/api |
+| **Windy.com** | `WINDY_API_KEY` | https://api.windy.com/ |
 
-```bash
-STORMGLASS_API_KEY=your-api-key-here
-OPEN_WEATHER_MAP_API_KEY=your-api-key-here
-```
+**Setup:**
 
-A `.env.example` template file is provided as a reference.
+1. Create a `.env` file in the project root (use `.env.example` as template):
+   ```bash
+   STORMGLASS_API_KEY=your-stormglass-key-here
+   OPEN_WEATHER_MAP_API_KEY=your-openweathermap-key-here
+   WINDY_API_KEY=your-windy-key-here
+   ```
 
-**Note:** The `.env` file is automatically ignored by git to keep your API key secure.
+2. (Optional) Use a custom `.env` file location:
+   ```bash
+   cargo run --release -- --env-file /path/to/custom.env
+   ```
+
+**Security Note:** The `.env` file is automatically ignored by git to keep your API keys secure.
 
 ### Timezone Configuration
 
@@ -130,30 +137,45 @@ Or run the compiled binary directly:
 ### Command Line Options
 
 #### Core Forecast Options
-- `--days-ahead <N>`: Number of days to forecast ahead (1-7, default: 4)
-- `--first-day-offset <N>`: Number of days to offset the start date (0-7, default: 0 for today)
-- `--provider <PROVIDER>`: Weather forecast provider to use (default: "stormglass")
+| Flag | Description | Default | Range |
+|------|-------------|---------|-------|
+| `--days-ahead <N>` | Number of days to forecast ahead | 4 | 1-7 |
+| `--first-day-offset <N>` | Days to offset start date (0=today) | 0 | 0-7 |
+| `--provider <PROVIDER>` | Weather forecast provider | "stormglass" | See below |
 
 #### Timezone Options
-- `--timezone <TIMEZONE>`, `-z <TIMEZONE>`: Timezone for displaying timestamps (use "LOCAL" for system timezone, overrides and persists to config file)
-- `--pick-timezone`: Launch interactive timezone picker and save to config (conflicts with `--timezone`)
+| Flag | Description |
+|------|-------------|
+| `--timezone <TZ>`, `-z <TZ>` | Timezone for timestamps (e.g., "America/New_York", "LOCAL") |
+| `--pick-timezone` | Launch interactive timezone picker (conflicts with `--timezone`) |
 
 #### Location Options
-- `--lat <LAT>`: Latitude for the forecast location (required if not in config file, range: -90.0 to 90.0)
-- `--lng <LNG>`: Longitude for the forecast location (required if not in config file, range: -180.0 to 180.0)
+| Flag | Description | Range |
+|------|-------------|-------|
+| `--lat <LAT>` | Latitude for forecast location (required if not in config) | -90.0 to 90.0 |
+| `--lng <LNG>` | Longitude for forecast location (required if not in config) | -180.0 to 180.0 |
 
 #### Configuration Options
-- `--config-file-path <PATH>`: Path to custom config file (default: ~/.windsurf-config.toml)
-- `--save`: Save configuration to file after successful execution (applies to provider, timezone, and coordinates)
+| Flag | Description |
+|------|-------------|
+| `--config-file-path <PATH>` | Custom config file path (default: `~/.windsurf-config.toml`) |
+| `--save` | Save configuration after successful execution |
+| `--env-file <PATH>` | Custom `.env` file path (default: `.env` in current directory) |
 
 #### Information Options
-- `--list-providers`: List all available weather providers and exit
-- `--help`: Display help information
+| Flag | Description |
+|------|-------------|
+| `--list-providers` | List all available weather providers and exit |
+| `--help` | Display help information |
 
 **Available Providers:**
-- `stormglass` - Storm Glass API (default)
-- `openweathermap` - OpenWeatherMap API
-- To add more providers, see [ADDING_PROVIDERS.md](ADDING_PROVIDERS.md)
+| Provider | Name | Description |
+|----------|------|-------------|
+| `stormglass` | StormGlass | Marine weather data (default) |
+| `openweathermap` | OpenWeatherMap | Global weather data |
+| `windy` | Windy.com | High-resolution weather models |
+
+To add more providers, see [`ADDING_PROVIDERS.md`](ADDING_PROVIDERS.md).
 
 **Important Constraints:**
 - The sum of `--days-ahead` and `--first-day-offset` must not exceed 7 to ensure reliable forecasts
@@ -246,16 +268,36 @@ The output includes:
 
 ## Weather Parameters
 
-The application fetches the following weather parameters from Storm Glass:
+The application fetches comprehensive weather data from multiple providers. Available parameters vary by provider:
 
-- **Air Temperature**: Air temperature in degrees Celsius
-- **Wind Speed**: Speed of wind at 10m above ground in knots
-- **Gust**: Wind gust in knots
-- **Wind Direction**: Direction of wind at 10m above ground (0° = north)
+### Common Parameters (All Providers)
+- **Air Temperature**: Temperature in degrees Celsius
+- **Wind Speed**: Wind speed in m/s or knots (provider-dependent)
+- **Wind Gust**: Wind gust speed
+- **Wind Direction**: Direction in degrees (0° = north)
 - **Swell Height**: Height of swell waves in meters
 - **Swell Period**: Period of swell waves in seconds
 - **Swell Direction**: Direction of swell waves (0° = north)
-- **Water Temperature**: Water temperature in degrees Celsius
+
+### Provider-Specific Features
+
+#### StormGlass
+- Wind speeds **converted from m/s to knots** (×1.94384)
+- Water temperature
+- High-quality marine-focused data
+
+#### OpenWeatherMap
+- Wind speeds remain in **m/s** (no conversion)
+- Comprehensive global coverage
+- Standard meteorological parameters
+
+#### Windy.com
+- Wind speeds in **m/s**
+- Separate wind waves and swell data
+- Cloud cover (low/medium/high altitude layers)
+- Precipitation data
+- Calculated from wind components (u/v vectors)
+- Temperature converted from Kelvin to Celsius
 
 ## Location
 
@@ -309,10 +351,26 @@ The application provides detailed error messages for common issues:
 
 ## Provider Documentation
 
-### Storm Glass API
-For more information about the Storm Glass API, see: https://docs.stormglass.io/#/weather
+### StormGlass API
+Marine-focused weather data with premium quality.
+- **Documentation**: https://docs.stormglass.io/#/weather
+- **API Key**: Free tier available
+- **Output Units**: Wind speed in knots, temperature in Celsius
+
+### OpenWeatherMap API
+Global weather data with comprehensive coverage.
+- **Documentation**: https://openweathermap.org/api
+- **API Key**: Free tier available
+- **Output Units**: Wind speed in m/s, temperature in Celsius
+
+### Windy.com API
+High-resolution weather models with advanced parameters.
+- **Documentation**: https://api.windy.com/
+- **API Key**: Registration required
+- **Output Units**: Wind speed in m/s, temperature in Celsius
+- **Special Features**: Separate wind waves and swell, multi-layer cloud data
 
 ### Adding New Providers
-To integrate additional weather API providers, see [ADDING_PROVIDERS.md](ADDING_PROVIDERS.md) for a complete guide.
+To integrate additional weather API providers, see [`ADDING_PROVIDERS.md`](ADDING_PROVIDERS.md) for a complete guide.
 
 ## License
