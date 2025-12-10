@@ -18,7 +18,7 @@ use crate::provider_registry::ProviderMetadata;
 // ============================================================================
 
 #[derive(Error, Debug)]
-#[error("Storm Glass API Error (HTTP {status_code}): {message}")]
+#[error("Windy Glass API Error (HTTP {status_code}): {message}")]
 pub struct WindyAPIError {
     status_code: u16,
     message: String,
@@ -32,10 +32,10 @@ impl WindyAPIError {
         }
     }
 
-    fn from_status_code(status_code: u16) -> Self {
+    fn from_status_code_and_body(status_code: u16, body: &str) -> Self {
         let message = match status_code {
             204 => "the selected model does not feature any of the requested parameters.".to_string(),
-            400 => "invalid request, error in the body’s description.".to_string(),
+            400 => format!("invalid request, error: {}.", body),
             500 => "unexpected error.".to_string(),
             _ => format!("Unexpected API error (HTTP {}).\nPlease check the API documentation or try again later.", status_code),
         };
@@ -44,7 +44,7 @@ impl WindyAPIError {
 }
 
 // ============================================================================
-// StormGlass-Specific Data Structures
+// Windy-Specific Data Structures
 // ============================================================================
 
 #[derive(Debug, Deserialize)]
@@ -105,7 +105,7 @@ struct GfsWaveUnitsRsponse {
 #[derive(Debug, Deserialize)]
 struct GfsRawWeatherResponse {
     #[serde(rename = "ts")]
-    local_epoch_ts: Vec<i32>,
+    local_epoch_ts: Vec<i64>,
     units: GfsUnitsRsponse,
     #[serde(rename = "temp-surface")]
     air_temperature: Option<Vec<f64>>,
@@ -128,14 +128,14 @@ struct GfsRawWeatherResponse {
 #[derive(Debug, Deserialize)]
 struct GfsWaveRawWeatherResponse {
     #[serde(rename = "ts")]
-    local_epoch_ts: Vec<i32>,
+    local_epoch_ts: Vec<i64>,
     units: GfsWaveUnitsRsponse,
     #[serde(rename = "wwaves_height-surface")]
-    wind_waves_hight: Option<Vec<f64>>,
+    wind_waves_hight: Option<Vec<Option<f64>>>,
     #[serde(rename = "wwaves_period-surface")]
-    wind_waves_period: Option<Vec<f64>>,
+    wind_waves_period: Option<Vec<Option<f64>>>,
     #[serde(rename = "wwaves_direction-surface")]
-    wind_waves_direction: Option<Vec<f64>>,
+    wind_waves_direction: Option<Vec<Option<f64>>>,
     #[serde(rename = "swell1_height-surface")]
     swell1_hight: Option<Vec<f64>>,
     #[serde(rename = "swell1_period-surface")]
@@ -166,6 +166,7 @@ struct WindyRequestBody {
     model: String,
     parameters: Vec<String>,
     key: String,
+    levels: Vec<String>,
 }
 
 #[async_trait]
@@ -194,11 +195,11 @@ impl ForecastProvider for WindyProvider {
             lon: lng,
             model: "gfsWave".to_string(),
             parameters: vec![
-                "wind".to_string(),
                 "swell1".to_string(),
                 "waves".to_string(),
                 "windWaves".to_string(),
             ],
+            levels: vec!["surface".to_string()],
             key: self.api_key.clone(),
         };
         let gfs_body = WindyRequestBody {
@@ -211,6 +212,7 @@ impl ForecastProvider for WindyProvider {
                 "wind".to_string(),
                 "windGust".to_string(),
             ],
+            levels: vec!["surface".to_string()],
             key: self.api_key.clone(),
         };
 
@@ -233,28 +235,46 @@ impl ForecastProvider for WindyProvider {
         let gfs_wave_response =
             gfs_wave_response.context("Failed to connect to Windy API (gfsWave)")?;
 
-        if !gfs_wave_response.status().is_success()
-            || gfs_wave_response.status() == reqwest::StatusCode::NO_CONTENT
-        {
-            return Err(
-                WindyAPIError::from_status_code(gfs_wave_response.status().as_u16()).into(),
-            );
+        let gfs_wave_status = gfs_wave_response.status();
+
+        let gfs_wave_body = gfs_wave_response
+            .text()
+            .await
+            .context("Failed to read gfsWave response body")?;
+
+        if !gfs_wave_status.is_success() || gfs_wave_status == reqwest::StatusCode::NO_CONTENT {
+            return Err(WindyAPIError::from_status_code_and_body(
+                gfs_wave_status.as_u16(),
+                &gfs_wave_body,
+            )
+            .into());
         }
 
         // Handle second response
         let gfs_response = gfs_response.context("Failed to connect to Windy API (gfs)")?;
 
-        if !gfs_response.status().is_success()
-            || gfs_response.status() == reqwest::StatusCode::NO_CONTENT
-        {
-            return Err(WindyAPIError::from_status_code(gfs_response.status().as_u16()).into());
+        let gfs_status = gfs_response.status();
+
+        let gfs_body = gfs_response
+            .text()
+            .await
+            .context("Failed to read gfsWave response body")?;
+
+        if !gfs_status.is_success() || gfs_status == reqwest::StatusCode::NO_CONTENT {
+            return Err(
+                WindyAPIError::from_status_code_and_body(gfs_status.as_u16(), &gfs_body).into(),
+            );
         }
 
-        let gfs_wave_data = gfs_wave_response.json::<GfsWaveRawWeatherResponse>().await;
-        let gfs_data = gfs_response.json::<GfsRawWeatherResponse>().await;
-
-        let gfs_wave_data = gfs_wave_data.context("Failed to parse gfsWave API response")?;
-        let gfs_data = gfs_data.context("Failed to parse gfs API response")?;
+        println!("=== DEBUG: gfsWave Response ===");
+        println!("{}", &gfs_wave_body);
+        println!("=== DEBUG: gfs Response ===");
+        println!("{}", &gfs_body);
+        println!("=================================");
+        let gfs_wave_data: GfsWaveRawWeatherResponse =
+            serde_json::from_str(&gfs_wave_body).context("Failed to parse gfsWave API response")?;
+        let gfs_data: GfsRawWeatherResponse =
+            serde_json::from_str(&gfs_body).context("Failed to parse gfs API response")?;
 
         let mut data_points = Vec::with_capacity(gfs_wave_data.local_epoch_ts.len());
         Self::populate_weather_points(&mut data_points, gfs_wave_data, gfs_data, target_tz)?;
@@ -299,9 +319,9 @@ impl WindyProvider {
                     swell_height: gfs_wave_data.swell1_hight.as_ref().map(|v| v[i]),
                     swell_period: gfs_wave_data.swell1_period.as_ref().map(|v| v[i]),
                     swell_direction: gfs_wave_data.swell1_direction.as_ref().map(|v| v[i]),
-                    wind_wave_height: gfs_wave_data.wind_waves_hight.as_ref().map(|v| v[i]),
-                    wind_wave_period: gfs_wave_data.wind_waves_period.as_ref().map(|v| v[i]),
-                    wind_wave_direction: gfs_wave_data.wind_waves_direction.as_ref().map(|v| v[i]),
+                    wind_wave_height: gfs_wave_data.wind_waves_hight.as_ref().and_then(|v| v[i]),
+                    wind_wave_period: gfs_wave_data.wind_waves_period.as_ref().and_then(|v| v[i]),
+                    wind_wave_direction: gfs_wave_data.wind_waves_direction.as_ref().and_then(|v| v[i]),
                 },
 
                 water_temperature: None,
@@ -319,8 +339,8 @@ impl WindyProvider {
         Ok(())
     }
 
-    fn convert_timestamp(ts_ms: i32, target_tz: Tz) -> Result<LocalTimestamp> {
-        let utc_datetime = DateTime::<Utc>::from_timestamp_millis(ts_ms as i64)
+    fn convert_timestamp(ts_ms: i64, target_tz: Tz) -> Result<LocalTimestamp> {
+        let utc_datetime = DateTime::<Utc>::from_timestamp_millis(ts_ms)
             .ok_or(anyhow::anyhow!("Invalid timestamp: {}", ts_ms))?;
         let utc = UtcTimestamp(utc_datetime);
         convert_timezone(utc, target_tz)
@@ -348,9 +368,9 @@ impl WindyProvider {
 // Register provider with central registry
 inventory::submit! {
     ProviderMetadata {
-        name: "stormglass",
-        description: "StormGlass Marine Weather API",
-        api_key_var: "STORMGLASS_API_KEY",
+        name: "windy",
+        description: "Windy.com Weather API",
+        api_key_var: "WINDY_API_KEY",
         instantiate: || {
             let api_key = WindyProvider::get_api_key()?;
             Ok(Box::new(
