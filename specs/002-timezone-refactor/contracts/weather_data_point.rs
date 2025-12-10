@@ -160,57 +160,6 @@ impl WeatherDataPoint {
 }
 
 // ============================================================================
-// Migration Guide
-// ============================================================================
-
-/// # Migration from Old to New WeatherDataPoint
-/// 
-/// ## Old Code (Before Refactor)
-/// ```rust
-/// use chrono::{DateTime, Utc};
-/// 
-/// // Provider transform function
-/// fn transform_api_response(raw: ApiResponse) -> WeatherDataPoint {
-///     WeatherDataPoint {
-///         time: parse_utc_timestamp(&raw.time),  // DateTime<Utc>
-///         air_temperature: Some(raw.temp),
-///         // ... other fields
-///     }
-/// }
-/// ```
-/// 
-/// ## New Code (After Refactor)
-/// ```rust
-/// use chrono_tz::Tz;
-/// use super::newtype_wrappers::{UtcTimestamp, convert_timezone};
-/// 
-/// // Provider transform function now accepts timezone
-/// fn transform_api_response(
-///     raw: ApiResponse,
-///     target_tz: Tz,
-/// ) -> Result<WeatherDataPoint> {
-///     // Step 1: Parse as UTC
-///     let utc = UtcTimestamp::from_rfc3339(&raw.time)?;
-///     
-///     // Step 2: Convert to target timezone HERE (not in serialization)
-///     let local = convert_timezone(utc, target_tz)?;
-///     
-///     // Step 3: Use LocalTimestamp in WeatherDataPoint
-///     Ok(WeatherDataPoint {
-///         time: local,  // LocalTimestamp, not DateTime<Utc>
-///         air_temperature: Some(raw.temp),
-///         // ... other fields
-///     })
-/// }
-/// ```
-/// 
-/// ## Key Differences
-/// 1. **Timezone parameter**: Transform function must accept `target_tz: Tz`
-/// 2. **Explicit conversion**: Call `convert_timezone()` in transform layer
-/// 3. **Type safety**: `LocalTimestamp` prevents mixing UTC and local times
-/// 4. **No serialization changes**: JSON format unchanged, but logic moved
-
-// ============================================================================
 // Tests
 // ============================================================================
 

@@ -8,7 +8,7 @@ use std::env;
 use thiserror::Error;
 
 use crate::forecast_provider::{
-    convert_timezone, ForecastProvider, UtcTimestamp, WeatherDataPoint,
+    CloudDatapointSection, ForecastProvider, UtcTimestamp, WaveDatapointSection, WeatherData, WeatherDataPoint, WindDatapoinSection, convert_timezone
 };
 use crate::provider_registry::ProviderMetadata;
 
@@ -67,6 +67,12 @@ struct RawHourlyData {
     swell_height: Option<SourceData>,
     #[serde(rename = "swellPeriod")]
     swell_period: Option<SourceData>,
+    #[serde(rename = "windWaveHeight", skip_serializing_if = "Option::is_none")]
+    pub wind_wave_height: Option<SourceData>,
+    #[serde(rename = "windWavePeriod", skip_serializing_if = "Option::is_none")]
+    pub wind_wave_period: Option<SourceData>,
+    #[serde(rename = "windWaveDirection", skip_serializing_if = "Option::is_none")]
+    pub wind_wave_direction: Option<SourceData>,
     #[serde(rename = "waterTemperature")]
     water_temperature: Option<SourceData>,
     #[serde(rename = "windDirection")]
@@ -107,14 +113,26 @@ impl StormGlassProvider {
         Ok(WeatherDataPoint {
             time: local,
             air_temperature: hour.air_temperature.map(|s| s.sg),
-            wind_speed: hour.wind_speed.map(|s| s.sg * Self::MS_TO_KNOTS),
-            wind_direction: hour.wind_direction.map(|s| s.sg),
-            gust: hour.gust.map(|s| s.sg * Self::MS_TO_KNOTS),
-            swell_height: hour.swell_height.map(|s| s.sg),
-            swell_period: hour.swell_period.map(|s| s.sg),
-            swell_direction: hour.swell_direction.map(|s| s.sg),
+            wind: WindDatapoinSection {
+                wind_speed: hour.wind_speed.map(|s| s.sg * Self::MS_TO_KNOTS),
+                wind_direction: hour.wind_direction.map(|s| s.sg),
+                gust: hour.gust.map(|s| s.sg * Self::MS_TO_KNOTS),
+            },
+            waves: WaveDatapointSection {
+                swell_height: hour.swell_height.map(|s| s.sg),
+                swell_period: hour.swell_period.map(|s| s.sg),
+                swell_direction: hour.swell_direction.map(|s| s.sg),
+                wind_wave_height: hour.wind_wave_height.map(|s|s.sg),
+                wind_wave_period: hour.wind_wave_period.map(|s|s.sg),
+                wind_wave_direction: hour.wind_wave_direction.map(|s|s.sg),
+            },
             water_temperature: hour.water_temperature.map(|s| s.sg),
-            cloud_cover: hour.cloud_cover.map(|s| s.sg),
+            clouds: CloudDatapointSection {
+                cloud_cover: hour.cloud_cover.map(|s| s.sg),
+                low_cloud_cover: None,
+                medium_cloud_cover: None,
+                high_cloud_cover: None,
+            },
             precipitation: hour.precipitation.map(|s| s.sg),
         })
     }
@@ -140,7 +158,7 @@ impl ForecastProvider for StormGlassProvider {
         lat: f64,
         lng: f64,
         target_tz: Tz,
-    ) -> Result<Vec<WeatherDataPoint>> {
+    ) -> Result<WeatherData> {
         let params = [
             "airTemperature",
             "gust",
@@ -186,12 +204,12 @@ impl ForecastProvider for StormGlassProvider {
             .await
             .context("Failed to parse API response")?;
 
-        let mut weather_points = Vec::with_capacity(data.hours.len());
+        let mut data_points = Vec::with_capacity(data.hours.len());
         for hour in data.hours {
-            weather_points.push(Self::transform_hour(hour, target_tz)?);
+            data_points.push(Self::transform_hour(hour, target_tz)?);
         }
 
-        Ok(weather_points)
+        Ok(WeatherData { data_points, alerts: None })
     }
 }
 

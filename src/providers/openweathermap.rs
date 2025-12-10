@@ -1,17 +1,38 @@
 use crate::forecast_provider::{
-    convert_timezone, ForecastProvider, UtcTimestamp, WeatherDataPoint,
+    CloudDatapointSection, ForecastProvider, UtcTimestamp, WaveDatapointSection, WeatherData, WeatherDataPoint, WindDatapoinSection, convert_timezone
 };
 use crate::provider_registry::ProviderMetadata;
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use chrono_tz::Tz;
 use serde::Deserialize;
 use std::env;
+use std::fmt::Display;
 
 #[derive(Debug, Deserialize)]
 struct RawWeatherResponse {
     hourly: Vec<RawHourlyData>,
+    alerts: Option<Vec<RawAlert>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawAlert {
+    sender_name: String,
+    event: String,
+    start: i64,
+    end: i64,
+    description: String,
+}
+
+impl Display for RawAlert {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Alert[{}]: {}\nFrom: {} To: {}\nDescription: {}",
+            self.sender_name, self.event, self.start, self.end, self.description
+        )
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -34,7 +55,7 @@ impl OpenWeatherMapProvider {
         Self { api_key }
     }
 
-    fn transform_hour(hour: RawHourlyData, target_tz: Tz) -> Result<WeatherDataPoint> {
+    fn build_weather_data_point(hour: RawHourlyData, target_tz: Tz) -> Result<WeatherDataPoint> {
         let utc_datetime = DateTime::<Utc>::from_timestamp(hour.dt, 0)
             .ok_or(anyhow::anyhow!("Could not parse timestamp"))?;
         let utc = UtcTimestamp(utc_datetime);
@@ -44,14 +65,26 @@ impl OpenWeatherMapProvider {
         Ok(WeatherDataPoint {
             time: local,
             air_temperature: Some(hour.air_temperature),
-            wind_speed: hour.wind_speed,
-            wind_direction: hour.wind_deg,
-            gust: hour.wind_gust,
-            swell_height: None,
-            swell_period: None,
-            swell_direction: None,
+            wind: WindDatapoinSection {
+                wind_speed: hour.wind_speed,
+                wind_direction: hour.wind_deg,
+                gust: hour.wind_gust,
+            },
+            waves: WaveDatapointSection {
+                swell_height: None,
+                swell_period: None,
+                swell_direction: None,
+                wind_wave_height: None,
+                wind_wave_period: None,
+                wind_wave_direction: None,
+            },
             water_temperature: None,
-            cloud_cover: hour.clouds,
+            clouds: CloudDatapointSection {
+                cloud_cover: hour.clouds,
+                low_cloud_cover: None,
+                medium_cloud_cover: None,
+                high_cloud_cover: None,
+            },
             precipitation: None, // TODO: Map precipitation if available
         })
     }
@@ -80,7 +113,7 @@ impl ForecastProvider for OpenWeatherMapProvider {
         lat: f64,
         lng: f64,
         target_tz: Tz,
-    ) -> Result<Vec<WeatherDataPoint>> {
+    ) -> Result<WeatherData> {
         println!(
             "Fetching weather data from {} to {} for coordinates ({}, {})",
             start, end, lat, lng
@@ -118,12 +151,35 @@ impl ForecastProvider for OpenWeatherMapProvider {
         let data: RawWeatherResponse =
             serde_json::from_str(&response_text).context("Failed to parse API response")?;
 
-        let mut weather_points = Vec::with_capacity(data.hourly.len());
+        let alerts_formatted = data.alerts.map(|alerts| {
+            alerts
+                .into_iter()
+                // filter_map to convert and skip any invalid timestamps
+                .filter_map(|alert| {
+                    let utc_start = DateTime::<Utc>::from_timestamp(alert.start, 0)?;
+                    let utc_end = DateTime::<Utc>::from_timestamp(alert.end, 0)?;
+
+                    let start_local = target_tz.from_utc_datetime(&utc_start.naive_utc());
+                    let end_local = target_tz.from_utc_datetime(&utc_end.naive_utc());
+
+                    Some(format!(
+                        "Alert[{}]: {}\nFrom: {} To: {}\nDescription: {}",
+                        alert.sender_name,
+                        alert.event,
+                        start_local.format("%Y-%m-%d %H:%M"),
+                        end_local.format("%Y-%m-%d %H:%M"),
+                        alert.description
+                    ))
+                })
+                .collect::<Vec<String>>()
+        });
+
+        let mut data_points = Vec::with_capacity(data.hourly.len());
         for hour in data.hourly {
-            weather_points.push(Self::transform_hour(hour, target_tz)?);
+            data_points.push(Self::build_weather_data_point(hour, target_tz)?);
         }
 
-        Ok(weather_points)
+        Ok(WeatherData{data_points, alerts: alerts_formatted})
     }
 }
 

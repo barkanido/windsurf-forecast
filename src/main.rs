@@ -206,7 +206,7 @@ async fn run() -> Result<()> {
         (resolved_config.first_day_offset + resolved_config.days_ahead - 1) as i64,
     );
 
-    let weather_points = provider
+    let weather_data = provider
         .fetch_weather_data(
             start,
             end,
@@ -217,7 +217,7 @@ async fn run() -> Result<()> {
         .await?;
 
     let transformed_data = TransformedWeatherResponse {
-        hours: weather_points,
+        hours: weather_data.data_points,
         meta: create_meta(
             resolved_config.lat,
             resolved_config.lng,

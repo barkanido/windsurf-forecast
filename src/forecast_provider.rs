@@ -60,8 +60,8 @@ impl Serialize for LocalTimestamp {
 ///
 /// This is the core timezone conversion function that should be called
 /// in the provider transform layer (not during serialization).
-pub fn convert_timezone(utc: UtcTimestamp, target_tz: Tz) -> Result<LocalTimestamp> {
-    let local = target_tz.from_utc_datetime(&utc.0.naive_utc());
+pub fn convert_timezone(utc_timestamp: UtcTimestamp, target_tz: Tz) -> Result<LocalTimestamp> {
+    let local = target_tz.from_utc_datetime(&utc_timestamp.0.naive_utc());
     Ok(LocalTimestamp::new(local))
 }
 
@@ -71,38 +71,78 @@ pub fn convert_timezone(utc: UtcTimestamp, target_tz: Tz) -> Result<LocalTimesta
 
 /// Common weather data structure that all providers transform to
 #[derive(Debug, Clone, Serialize)]
+pub struct WeatherData {
+    pub data_points: Vec<WeatherDataPoint>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alerts: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct WeatherDataPoint {
     pub time: LocalTimestamp,
-    
+
     #[serde(rename = "airTemperature", skip_serializing_if = "Option::is_none")]
     pub air_temperature: Option<f64>,
-    
-    #[serde(rename = "windSpeed", skip_serializing_if = "Option::is_none")]
-    pub wind_speed: Option<f64>,
-    
-    #[serde(rename = "windDirection", skip_serializing_if = "Option::is_none")]
-    pub wind_direction: Option<f64>,
-    
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gust: Option<f64>,
-    
-    #[serde(rename = "swellHeight", skip_serializing_if = "Option::is_none")]
-    pub swell_height: Option<f64>,
-    
-    #[serde(rename = "swellPeriod", skip_serializing_if = "Option::is_none")]
-    pub swell_period: Option<f64>,
-    
-    #[serde(rename = "swellDirection", skip_serializing_if = "Option::is_none")]
-    pub swell_direction: Option<f64>,
-    
+
+    pub wind: WindDatapoinSection,
+
+    pub waves: WaveDatapointSection,
+
     #[serde(rename = "waterTemperature", skip_serializing_if = "Option::is_none")]
     pub water_temperature: Option<f64>,
 
-    #[serde(rename = "cloudCover", skip_serializing_if = "Option::is_none")]
-    pub cloud_cover: Option<f64>,
+    pub clouds: CloudDatapointSection,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub precipitation: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CloudDatapointSection {
+    #[serde(rename = "cloudsCover", skip_serializing_if = "Option::is_none")]
+    pub cloud_cover: Option<f64>,
+
+    #[serde(rename = "lowcloudsCover", skip_serializing_if = "Option::is_none")]
+    pub low_cloud_cover: Option<f64>,
+
+    #[serde(rename = "mdiumCloudsCover", skip_serializing_if = "Option::is_none")]
+    pub medium_cloud_cover: Option<f64>,
+
+    #[serde(rename = "highCloudsCover", skip_serializing_if = "Option::is_none")]
+    pub high_cloud_cover: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct WaveDatapointSection {
+    #[serde(rename = "swellHeight", skip_serializing_if = "Option::is_none")]
+    pub swell_height: Option<f64>,
+
+    #[serde(rename = "swellPeriod", skip_serializing_if = "Option::is_none")]
+    pub swell_period: Option<f64>,
+
+    #[serde(rename = "swellDirection", skip_serializing_if = "Option::is_none")]
+    pub swell_direction: Option<f64>,
+
+    #[serde(rename = "windWaveHeight", skip_serializing_if = "Option::is_none")]
+    pub wind_wave_height: Option<f64>,
+
+    #[serde(rename = "windWavePeriod", skip_serializing_if = "Option::is_none")]
+    pub wind_wave_period: Option<f64>,
+
+    #[serde(rename = "windWaveDirection", skip_serializing_if = "Option::is_none")]
+    pub wind_wave_direction: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct WindDatapoinSection {
+    #[serde(rename = "windSpeed", skip_serializing_if = "Option::is_none")]
+    pub wind_speed: Option<f64>,
+
+    #[serde(rename = "windDirection", skip_serializing_if = "Option::is_none")]
+    pub wind_direction: Option<f64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gust: Option<f64>,
 }
 
 /// Trait that all weather forecast providers must implement
@@ -110,13 +150,13 @@ pub struct WeatherDataPoint {
 pub trait ForecastProvider: Send + Sync {
     /// Get the name of this provider (e.g., "stormglass")
     fn name(&self) -> &str;
-    
+
     /// Get the API key from environment variables
     /// Returns the API key value or an error if not found/invalid
     fn get_api_key() -> Result<String>
     where
         Self: Sized;
-    
+
     /// Fetch weather data for the given time range and location
     /// Returns a vector of weather data points
     async fn fetch_weather_data(
@@ -126,5 +166,5 @@ pub trait ForecastProvider: Send + Sync {
         lat: f64,
         lng: f64,
         target_tz: Tz,
-    ) -> Result<Vec<WeatherDataPoint>>;
+    ) -> Result<WeatherData>;
 }
