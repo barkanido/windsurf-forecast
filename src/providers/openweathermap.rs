@@ -2,7 +2,7 @@ use crate::forecast_provider::{
     CloudDatapointSection, ForecastProvider, UtcTimestamp, WaveDatapointSection, WeatherData, WeatherDataPoint, WindDatapoinSection, convert_timezone
 };
 use crate::provider_registry::ProviderMetadata;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
 use chrono_tz::Tz;
@@ -48,11 +48,13 @@ struct RawHourlyData {
 
 pub struct OpenWeatherMapProvider {
     api_key: String,
+    name: String,
+    short_name: String,
 }
 
 impl OpenWeatherMapProvider {
     pub fn new(api_key: String) -> Self {
-        Self { api_key }
+        Self { api_key, name: "openweathermap".to_string(), short_name: "owm".to_string() }
     }
 
     fn build_weather_data_point(hour: RawHourlyData, target_tz: Tz) -> Result<WeatherDataPoint> {
@@ -93,7 +95,11 @@ impl OpenWeatherMapProvider {
 #[async_trait]
 impl ForecastProvider for OpenWeatherMapProvider {
     fn name(&self) -> &str {
-        "openweathermap"
+        &self.name
+    }
+
+    fn short_name(&self) -> &str {
+        &self.short_name
     }
 
     fn get_api_key() -> Result<String>

@@ -151,6 +151,8 @@ pub trait ForecastProvider: Send + Sync {
     /// Get the name of this provider (e.g., "stormglass")
     fn name(&self) -> &str;
 
+    fn short_name(&self) -> &str;
+
     /// Get the API key from environment variables
     /// Returns the API key value or an error if not found/invalid
     fn get_api_key() -> Result<String>

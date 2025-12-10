@@ -95,11 +95,14 @@ struct RawWeatherResponse {
 
 pub struct StormGlassProvider {
     api_key: String,
+    name: String,
+    short_name: String,
+    api_endpoint: String,
 }
 
 impl StormGlassProvider {
     pub fn new(api_key: String) -> Self {
-        Self { api_key }
+        Self { api_key, name: "stormglass".to_string(), short_name: "sg".to_string(), api_endpoint: "https://api.stormglass.io/v2/weather/point".to_string() }
     }
 
     /// Convert m/s to knots
@@ -141,7 +144,11 @@ impl StormGlassProvider {
 #[async_trait]
 impl ForecastProvider for StormGlassProvider {
     fn name(&self) -> &str {
-        "stormglass"
+        &self.name
+    }
+
+    fn short_name(&self) -> &str {
+        &self.short_name
     }
 
     fn get_api_key() -> Result<String> {
@@ -179,7 +186,7 @@ impl ForecastProvider for StormGlassProvider {
 
         let client = reqwest::Client::new();
         let response = client
-            .get("https://api.stormglass.io/v2/weather/point")
+            .get(&self.api_endpoint)
             .query(&[
                 ("lat", lat.to_string()),
                 ("lng", lng.to_string()),

@@ -142,9 +142,9 @@ async fn main() {
 }
 
 async fn run() -> Result<()> {
-    dotenv::dotenv().ok();
     provider_registry::check_duplicates();
     let args = Args::parse();
+    load_env(&args);
 
     if args.list_providers {
         println!("Available weather providers:\n");
@@ -229,7 +229,8 @@ async fn run() -> Result<()> {
     };
 
     let filename = format!(
-        "weather_data_{}d_{}.json",
+        "weather_data_{}_{}d_{}.json",
+        provider.short_name(),
         resolved_config.days_ahead,
         start.format("%y%m%d")
     );
@@ -245,6 +246,14 @@ async fn run() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn load_env(args: &Args) {
+    if let Some(env_path) = args.env_file.as_ref() {
+        dotenv::from_path(env_path).ok();
+    } else {
+        dotenv::dotenv().ok();
+    }
 }
 
 /// Creates a UTC datetime at the start of day (00:00:00) for a date offset from now

@@ -151,11 +151,13 @@ struct GfsWaveRawWeatherResponse {
 pub struct WindyProvider {
     api_key: String,
     api_url: String,
+    name: String,
+    short_name: String,
 }
 
 impl WindyProvider {
     pub fn new(api_key: String, api_url: String) -> Self {
-        Self { api_key, api_url }
+        Self { api_key, api_url, name: "windy".to_string(), short_name: "windy".to_string()}
     }
 }
 
@@ -172,7 +174,11 @@ struct WindyRequestBody {
 #[async_trait]
 impl ForecastProvider for WindyProvider {
     fn name(&self) -> &str {
-        "windy"
+        &self.name
+    }
+
+    fn short_name(&self) -> &str {
+        &self.short_name
     }
 
     fn get_api_key() -> Result<String> {

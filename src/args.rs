@@ -79,6 +79,10 @@ pub struct Args {
     /// (Applies to provider, timezone, and coordinates)
     #[arg(long)]
     pub save: bool,
+
+    /// Path to .env file for loading environment variables (default: .env in current directory)
+    #[arg(long)]
+    pub env_file: Option<PathBuf>,
 }
 
 impl Args {
